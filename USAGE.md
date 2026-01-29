@@ -73,7 +73,17 @@ Claude should respond with specific information about IDC, the `idc-index` packa
 
 If you're using [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (the CLI tool), you can install the skill for persistent access.
 
-### Option 1: Install as Personal Skill (Recommended)
+### Option 1: Install via npx (Recommended)
+
+The simplest way to install this skill using the [Skills.sh](https://skills.sh/) framework:
+
+```bash
+npx skills add https://github.com/imagingdatacommons/idc-claude-skill --skill imaging-data-commons
+```
+
+This command will automatically detect all AI agents on your system and offer to install the skill across all of them, making it available system-wide. Once installed, invoke with `/imaging-data-commons` or let your AI assistant auto-detect based on questions about IDC.
+
+### Option 2: Install as Personal Skill
 
 Link or copy the skill to your personal skills directory. This makes it available across all projects:
 
@@ -87,7 +97,7 @@ cp -r /path/to/idc-claude-skill ~/.claude/skills/imaging-data-commons
 
 Once installed, invoke with `/imaging-data-commons` or let Claude auto-detect based on your questions about IDC.
 
-### Option 2: Install as Project Skill
+### Option 3: Install as Project Skill
 
 For project-specific use, link to your project's `.claude/skills/` directory:
 
@@ -98,7 +108,7 @@ ln -s /path/to/idc-claude-skill /path/to/your-project/.claude/skills/imaging-dat
 
 This makes the skill available only when working in that project.
 
-### Option 3: Import During Session
+### Option 4: Import During Session
 
 For one-time use, read the skill files directly:
 ```
