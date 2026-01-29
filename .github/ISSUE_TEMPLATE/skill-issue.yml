@@ -1,0 +1,62 @@
+name: Skill Issue Report
+description: Report problems when the IDC skill cannot answer your questions correctly
+title: "[Skill Issue]: "
+labels: ["skill-issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report an issue with the IDC Claude skill!
+        
+        Please provide as much detail as possible to help us understand and fix the problem.
+
+  - type: textarea
+    id: question-asked
+    attributes:
+      label: Question Asked
+      description: What question did you ask Claude (with the IDC skill loaded)?
+      placeholder: "Example: Find all CT scans of lung cancer with commercial-use licenses"
+    validations:
+      required: true
+
+  - type: textarea
+    id: skill-response
+    attributes:
+      label: Skill Response
+      description: What response did the skill provide? (Copy the full response if possible)
+      placeholder: "Paste the skill's response here..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What did you expect the skill to provide or do instead?
+      placeholder: "Example: I expected the skill to provide a filtered list of collections with CT lung cancer data and CC-BY licenses"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: |
+        Add any other context about the problem here:
+        - Which AI assistant are you using? (Claude Desktop, API, other)
+        - Have similar questions worked in the past?
+        - Any error messages or unusual behavior?
+      placeholder: "Any additional details that might help..."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm the following before submitting
+      options:
+        - label: I have verified the skill is properly loaded (Claude confirms it has access to IDC information)
+          required: true
+        - label: I have checked existing issues to avoid duplicates
+          required: true
