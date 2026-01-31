@@ -263,6 +263,21 @@ clinical_df = client.get_clinical_table("table_name")
 | IDC Portal | No | Interactive exploration, manual selection, browser-based download |
 | BigQuery | Yes (GCP account) | Complex queries, full DICOM metadata |
 | DICOMweb proxy | No | Tool integration via DICOMweb API |
+| Cloud storage (S3/GCS) | No | Direct file access, bulk downloads, custom pipelines |
+
+**Cloud storage organization**
+
+IDC maintains all DICOM files in public cloud storage buckets mirrored between AWS S3 and Google Cloud Storage. Files are organized by CRDC UUIDs (not DICOM UIDs) to support versioning.
+
+| Bucket (AWS / GCS) | License | Content |
+|--------------------|---------|---------|
+| `idc-open-data` / `idc-open-data` | No commercial restriction | >90% of IDC data |
+| `idc-open-data-two` / `idc-open-idc1` | No commercial restriction | Collections with potential head scans |
+| `idc-open-data-cr` / `idc-open-cr` | Commercial use restricted (CC BY-NC) | ~4% of data |
+
+Files are stored as `<crdc_series_uuid>/<crdc_instance_uuid>.dcm`. Access is free (no egress fees) via AWS CLI, gsutil, or s5cmd with anonymous access. Use `series_aws_url` column from the index for S3 URLs; GCS uses the same path structure.
+
+See `references/cloud_storage_guide.md` for bucket details, access commands, UUID mapping, and versioning.
 
 **DICOMweb access**
 
@@ -1139,6 +1154,7 @@ columns = [(c['name'], c['type'], c.get('description', '')) for c in schema['col
 
 ### Reference Documentation
 
+- **cloud_storage_guide.md** - Direct cloud bucket access (S3/GCS), file organization, CRDC UUIDs, versioning, and reproducibility
 - **cli_guide.md** - Complete idc-index command-line interface reference (`idc download`, `idc download-from-manifest`, `idc download-from-selection`)
 - **bigquery_guide.md** - Advanced BigQuery usage guide for complex metadata queries
 - **dicomweb_guide.md** - DICOMweb endpoint URLs, code examples, and Google Healthcare API implementation details
