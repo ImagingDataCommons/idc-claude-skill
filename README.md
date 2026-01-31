@@ -35,6 +35,15 @@ This skill is included in the [K-Dense-AI/claude-scientific-skills](https://gith
 
 **Choose the collection if:** You want multiple scientific skills in one place
 
+## Versioning
+
+This skill follows [Semantic Versioning](https://semver.org/).
+
+- **Current Version:** 1.0.0
+- **Requires:** idc-index >= 0.11.7
+
+See [CHANGELOG.md](CHANGELOG.md) for version history and [Releases](https://github.com/ImagingDataCommons/idc-claude-skill/releases) for downloads.
+
 ## Credits
 
 This skill was created and is maintained by [Andrey Fedorov (@fedorov)](https://github.com/fedorov) and the [Imaging Data Commons](https://imaging.datacommons.cancer.gov/) team.

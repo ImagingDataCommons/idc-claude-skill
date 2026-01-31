@@ -1,0 +1,43 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Validate CHANGELOG contains version
+        run: |
+          if ! grep -q "\[${{ steps.version.outputs.version }}\]" CHANGELOG.md; then
+            echo "Error: CHANGELOG.md does not contain entry for version ${{ steps.version.outputs.version }}"
+            echo "Please add a section like: ## [${{ steps.version.outputs.version }}] - $(date +%Y-%m-%d)"
+            exit 1
+          fi
+          echo "CHANGELOG.md contains version ${{ steps.version.outputs.version }}"
+
+      - name: Create skill zip
+        run: |
+          zip -r imaging-data-commons-${{ steps.version.outputs.version }}.zip \
+            SKILL.md \
+            CHANGELOG.md \
+            references/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: imaging-data-commons-${{ steps.version.outputs.version }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
