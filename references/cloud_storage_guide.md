@@ -135,12 +135,21 @@ aws s3 cp --no-sign-request --recursive \
 # macOS: brew install s5cmd
 # Linux: download from https://github.com/peak/s5cmd/releases
 
-# Download from manifest file (URLs exported from idc-index or IDC Portal)
-s5cmd --no-sign-request run manifest.txt
-
 # Download specific series
 s5cmd --no-sign-request cp 's3://idc-open-data/7a6b2389-53c6-4c5b-b07f-6d1ed4a3eed9/*' ./local_folder/
+
+# Download from manifest file
+s5cmd --no-sign-request run manifest.txt
 ```
+
+**s5cmd manifest format:** The `s5cmd run` command expects one s5cmd command per line, not just URLs:
+```
+cp s3://idc-open-data/uuid1/instance1.dcm ./local_folder/
+cp s3://idc-open-data/uuid1/instance2.dcm ./local_folder/
+cp s3://idc-open-data/uuid2/instance3.dcm ./local_folder/
+```
+
+IDC Portal exports manifests in this format. When creating manifests programmatically, use `idc-index` download methods (which handle this internally) rather than constructing manifests manually.
 
 ### GCS Access
 
