@@ -217,7 +217,7 @@ IDC releases new data versions every 2-4 months. The versioning system ensures r
 | Metadata corrected | Same or new | New | New folder with updated files |
 | Series removed | N/A | N/A | Old folder remains, not in current index |
 
-**Data removal caveat:** In rare circumstances (e.g., data owner request, PHI incident), data may be removed from IDC entirely, including from all historical versions. While this is uncommon, users requiring guaranteed long-term access should maintain local copies of critical datasets.
+**Data removal caveat:** In rare circumstances (e.g., data owner request, PHI incident), data may be removed from IDC entirely, including from all historical versions.
 
 **BigQuery versioned datasets (metadata only, not file storage):**
 
@@ -268,22 +268,6 @@ client.download_from_selection(
 ```
 
 Since `crdc_series_uuid` identifies an immutable version of each series, saving these UUIDs guarantees you can retrieve the exact same files later.
-
-### Discovering Historical Data
-
-If you need to find what data was available at a specific IDC version (e.g., replicating a published study), use `prior_versions_index`:
-
-```python
-# Find series that existed in IDC version 20
-historical_data = client.sql_query("""
-    SELECT crdc_series_uuid, series_aws_url
-    FROM prior_versions_index
-    WHERE collection_id = 'tcga_luad'
-      AND min_idc_version <= 20 AND max_idc_version >= 20
-      AND Modality = 'CT'
-    LIMIT 10
-""")
-```
 
 ## Relationship Between Buckets, Versions, and Other Access Methods
 
