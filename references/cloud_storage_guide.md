@@ -28,7 +28,7 @@ IDC organizes data across multiple buckets based on licensing and content type. 
 - All AWS buckets are in AWS region `us-east-1`
 - Prior to IDC v19, GCS used `public-datasets-idc` (now superseded by `idc-open-data`)
 - The head scans bucket exists for potential future policy changes regarding facial imaging data
-- Use `idc-index` to get license information - do not rely on bucket name! 
+- **Important** Use `idc-index` to get license information - do not rely on bucket name! 
 
 ### Why Multiple Buckets?
 
@@ -52,11 +52,11 @@ Files are organized by CRDC UUIDs, not DICOM UIDs. This enables versioning while
 
 **Example path:**
 ```
-s3://idc-open-data/e127d258-37c2-47bb-a7d1-1faa7f47f47a/5dce0cf0-4694-4dff-8f9e-2785bf179267.dcm
+s3://idc-open-data/7a6b2389-53c6-4c5b-b07f-6d1ed4a3eed9/0d73f84e-70ae-4eeb-96a0-1c613b5d9229.dcm
 ```
 
-- `e127d258-37c2-47bb-a7d1-1faa7f47f47a` = series UUID (folder)
-- `5dce0cf0-4694-4dff-8f9e-2785bf179267.dcm` = instance UUID (file)
+- `7a6b2389-53c6-4c5b-b07f-6d1ed4a3eed9` = series UUID (folder)
+- `0d73f84e-70ae-4eeb-96a0-1c613b5d9229.dcm` = instance UUID (file)
 
 ### CRDC UUIDs vs DICOM UIDs
 
@@ -82,10 +82,7 @@ urls = client.get_series_file_URLs(seriesInstanceUID=series_uid)
 
 for url in urls[:3]:
     print(url)
-# Output:
-# s3://idc-open-data/abc123.../def456....dcm
-# s3://idc-open-data/abc123.../ghi789....dcm
-# ...
+# Returns S3 URLs like: s3://idc-open-data/<crdc_series_uuid>/<crdc_instance_uuid>.dcm
 ```
 
 Or query the index directly for URL columns:
@@ -119,16 +116,16 @@ All IDC buckets support free egress (no download fees) through partnerships with
 aws s3 ls --no-sign-request s3://idc-open-data/
 
 # List files in a series folder
-aws s3 ls --no-sign-request s3://idc-open-data/e127d258-37c2-47bb-a7d1-1faa7f47f47a/
+aws s3 ls --no-sign-request s3://idc-open-data/7a6b2389-53c6-4c5b-b07f-6d1ed4a3eed9/
 
 # Download a single file
 aws s3 cp --no-sign-request \
-    s3://idc-open-data/e127d258-37c2-47bb-a7d1-1faa7f47f47a/5dce0cf0-4694-4dff-8f9e-2785bf179267.dcm \
+    s3://idc-open-data/7a6b2389-53c6-4c5b-b07f-6d1ed4a3eed9/0d73f84e-70ae-4eeb-96a0-1c613b5d9229.dcm \
     ./local_file.dcm
 
 # Download entire series folder
 aws s3 cp --no-sign-request --recursive \
-    s3://idc-open-data/e127d258-37c2-47bb-a7d1-1faa7f47f47a/ \
+    s3://idc-open-data/7a6b2389-53c6-4c5b-b07f-6d1ed4a3eed9/ \
     ./series_folder/
 ```
 
@@ -142,7 +139,7 @@ aws s3 cp --no-sign-request --recursive \
 s5cmd --no-sign-request run manifest.txt
 
 # Download specific series
-s5cmd --no-sign-request cp 's3://idc-open-data/e127d258-37c2-47bb-a7d1-1faa7f47f47a/*' ./local_folder/
+s5cmd --no-sign-request cp 's3://idc-open-data/7a6b2389-53c6-4c5b-b07f-6d1ed4a3eed9/*' ./local_folder/
 ```
 
 ### GCS Access
@@ -153,12 +150,12 @@ s5cmd --no-sign-request cp 's3://idc-open-data/e127d258-37c2-47bb-a7d1-1faa7f47f
 gsutil ls gs://idc-open-data/
 
 # Download a series folder
-gsutil -m cp -r gs://idc-open-data/e127d258-37c2-47bb-a7d1-1faa7f47f47a/ ./local_folder/
+gsutil -m cp -r gs://idc-open-data/7a6b2389-53c6-4c5b-b07f-6d1ed4a3eed9/ ./local_folder/
 ```
 
 **Using gcloud storage (newer CLI):**
 ```bash
-gcloud storage cp -r gs://idc-open-data/e127d258-37c2-47bb-a7d1-1faa7f47f47a/ ./local_folder/
+gcloud storage cp -r gs://idc-open-data/7a6b2389-53c6-4c5b-b07f-6d1ed4a3eed9/ ./local_folder/
 ```
 
 ### Python Direct Access
@@ -166,15 +163,30 @@ gcloud storage cp -r gs://idc-open-data/e127d258-37c2-47bb-a7d1-1faa7f47f47a/ ./
 ```python
 import s3fs
 import gcsfs
+from idc_index import IDCClient
+
+# First, get a file URL from idc-index
+client = IDCClient()
+result = client.sql_query("""
+    SELECT series_aws_url
+    FROM index
+    WHERE collection_id = 'rider_pilot' AND Modality = 'CT'
+    LIMIT 1
+""")
+# series_aws_url is like: s3://idc-open-data/<uuid>/*
+series_url = result['series_aws_url'].iloc[0]
+series_path = series_url.replace('s3://', '').rstrip('/*')  # e.g., "idc-open-data/<uuid>"
 
 # AWS S3 access
 s3 = s3fs.S3FileSystem(anon=True)
-with s3.open('idc-open-data/series_uuid/instance_uuid.dcm', 'rb') as f:
+files = s3.ls(series_path)
+with s3.open(files[0], 'rb') as f:
     data = f.read()
 
-# GCS access
+# GCS access (same path structure as AWS)
 gcs = gcsfs.GCSFileSystem(token='anon')
-with gcs.open('idc-open-data/series_uuid/instance_uuid.dcm', 'rb') as f:
+files = gcs.ls(series_path)
+with gcs.open(files[0], 'rb') as f:
     data = f.read()
 ```
 
@@ -186,7 +198,7 @@ IDC releases new data versions every 2-4 months. The versioning system ensures r
 
 1. **Snapshots**: Each IDC version (v1, v2, ..., v23, etc.) represents a complete snapshot of all data at release time
 2. **UUID-based**: When data changes, new CRDC UUIDs are assigned; old UUIDs remain accessible
-3. **Cumulative buckets**: All versions coexist in the same buckets—old series folders are never deleted
+3. **Cumulative buckets**: All versions coexist in the same buckets—old series folders
 
 **Version change scenarios:**
 | Change Type | DICOM UID | CRDC UUID | Effect |
@@ -198,52 +210,62 @@ IDC releases new data versions every 2-4 months. The versioning system ensures r
 
 **Data removal caveat:** In rare circumstances (e.g., data owner request, PHI incident), data may be removed from IDC entirely, including from all historical versions. While this is uncommon, users requiring guaranteed long-term access should maintain local copies of critical datasets.
 
-### Accessing Specific Versions
+**BigQuery versioned datasets (metadata only, not file storage):**
 
-**Current version (recommended for most use cases):**
-```python
-from idc_index import IDCClient
-
-client = IDCClient()
-
-# Check current version
-print(client.get_idc_version())  # e.g., "23"
-
-# Query current data
-results = client.sql_query("SELECT * FROM index LIMIT 5")
-```
-
-**Historical data (for reproducibility):**
-```python
-# The prior_versions_index table contains series from all previous IDC releases
-# min_idc_version/max_idc_version indicate which IDC versions contain this series
-results = client.sql_query("""
-    SELECT SeriesInstanceUID, crdc_series_uuid, min_idc_version, max_idc_version, series_aws_url
-    FROM prior_versions_index
-    WHERE SeriesInstanceUID = '1.3.6.1.4.1.14519.5.2.1.6450.9002.217441095430480124587725641302'
-    ORDER BY min_idc_version DESC
-""")
-
-# Shows all versions of this series across IDC releases
-print(results)
-```
-
-**BigQuery versioned datasets:**
+For querying version-specific metadata, BigQuery provides versioned tables. See `bigquery_guide.md` for details.
 - `bigquery-public-data.idc_current` — alias to latest version
 - `bigquery-public-data.idc_v23` — specific version (replace 23 with desired version)
-- `bigquery-public-data.idc_v22`, `idc_v21`, etc. — historical versions
 
 ### Reproducing a Previous Analysis
 
-To download the exact data from a previous IDC version:
+The simplest way to ensure reproducibility is to save the `crdc_series_uuid` values of the data you use at analysis time:
 
 ```python
 from idc_index import IDCClient
+import json
 
 client = IDCClient()
 
-# Find specific series from a historical version
-# Use min_idc_version to find series that existed in version 20
+# Select data for your analysis
+selection = client.sql_query("""
+    SELECT crdc_series_uuid
+    FROM index
+    WHERE collection_id = 'tcga_luad'
+      AND Modality = 'CT'
+    LIMIT 10
+""")
+series_uuids = list(selection['crdc_series_uuid'])
+
+# Download the data
+client.download_from_selection(seriesInstanceUID=series_uuids, downloadDir="./data")
+
+# Save a manifest for reproducibility
+manifest = {
+    "crdc_series_uuids": series_uuids,
+    "download_date": "2024-01-15",
+    "idc_version": client.get_idc_version(),
+    "description": "CT scans for lung cancer analysis"
+}
+with open("analysis_manifest.json", "w") as f:
+    json.dump(manifest, f, indent=2)
+
+# Later, reproduce the exact dataset:
+with open("analysis_manifest.json") as f:
+    manifest = json.load(f)
+client.download_from_selection(
+    seriesInstanceUID=manifest["crdc_series_uuids"],
+    downloadDir="./reproduced_data"
+)
+```
+
+Since `crdc_series_uuid` identifies an immutable version of each series, saving these UUIDs guarantees you can retrieve the exact same files later.
+
+### Discovering Historical Data
+
+If you need to find what data was available at a specific IDC version (e.g., replicating a published study), use `prior_versions_index`:
+
+```python
+# Find series that existed in IDC version 20
 historical_data = client.sql_query("""
     SELECT crdc_series_uuid, series_aws_url
     FROM prior_versions_index
@@ -252,13 +274,6 @@ historical_data = client.sql_query("""
       AND Modality = 'CT'
     LIMIT 10
 """)
-
-# Download using the historical URLs
-# The files still exist in the bucket at the same UUID paths
-client.download_from_selection(
-    seriesInstanceUID=list(historical_data['crdc_series_uuid'].values),
-    downloadDir="./historical_data"
-)
 ```
 
 ## Relationship Between Buckets, Versions, and Other Access Methods
@@ -275,34 +290,10 @@ client.download_from_selection(
 
 **Important:** The Google Healthcare API DICOM store only replicates data from `idc-open-data`. Data in `idc-open-data-two` and `idc-open-data-cr` (approximately 4% of total) is not available via Google Healthcare DICOMweb endpoint.
 
-### Checking Which Bucket Contains Your Data
-
-```python
-from idc_index import IDCClient
-
-client = IDCClient()
-
-# Check bucket distribution for a collection
-result = client.sql_query("""
-    SELECT
-        CASE
-            WHEN series_aws_url LIKE '%idc-open-data-cr%' THEN 'idc-open-data-cr (CC-NC)'
-            WHEN series_aws_url LIKE '%idc-open-data-two%' THEN 'idc-open-data-two (heads)'
-            ELSE 'idc-open-data (primary)'
-        END as bucket,
-        COUNT(*) as series_count
-    FROM index
-    WHERE collection_id = 'tcga_luad'
-    GROUP BY bucket
-""")
-
-print(result)
-```
-
 ## Best Practices
 
 - **Use `idc-index` for discovery**: Query metadata first, then access buckets with known UUIDs
-- **Prefer AWS for downloads**: S3 with s5cmd offers faster parallel transfers than GCS
+- **Download defaults to AWS buckets**: request GCS if needed
 - **Save manifests**: Store the `series_aws_url` or `crdc_series_uuid` values for reproducibility
 - **Check licenses**: Query `license_short_name` before commercial use; CC-NC data requires non-commercial use
 - **Use current version unless reproducing**: The `index` table has current data; use `prior_versions_index` only for exact reproducibility
