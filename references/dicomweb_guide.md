@@ -70,6 +70,8 @@ The Google Healthcare DICOM store **only replicates data from the `idc-open-data
 
 These missing buckets typically contain several thousand series each, representing approximately 4% of total IDC data. The exact counts vary by IDC version.
 
+See `cloud_storage_guide.md` for details on bucket organization, file structure, and direct access methods.
+
 ### Update Timing
 
 - **IDC Public Proxy**: Updates immediately when new IDC versions are released
@@ -391,3 +393,7 @@ response = requests.get(
 - [Google Healthcare DICOM Conformance Statement](https://docs.cloud.google.com/healthcare-api/docs/dicom)
 - [DICOMweb Standard](https://www.dicomstandard.org/using/dicomweb)
 - [dicomweb-client Python library](https://dicomweb-client.readthedocs.io/)
+
+**Related Guides:**
+- `cloud_storage_guide.md` - Direct bucket access, file organization, CRDC UUIDs, and versioning
+- `bigquery_guide.md` - Advanced metadata queries with full DICOM attributes
