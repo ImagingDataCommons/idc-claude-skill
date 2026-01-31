@@ -1139,6 +1139,7 @@ columns = [(c['name'], c['type'], c.get('description', '')) for c in schema['col
 
 ### Reference Documentation
 
+- **cli_guide.md** - Complete idc-index command-line interface reference (`idc download`, `idc download-from-manifest`, `idc download-from-selection`)
 - **bigquery_guide.md** - Advanced BigQuery usage guide for complex metadata queries
 - **dicomweb_guide.md** - DICOMweb endpoint URLs, code examples, and Google Healthcare API implementation details
 - **[indices_reference](https://idc-index.readthedocs.io/en/latest/indices_reference.html)** - External documentation for index tables (may be ahead of the installed version)
