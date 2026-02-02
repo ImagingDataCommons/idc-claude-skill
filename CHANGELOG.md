@@ -5,6 +5,24 @@ All notable changes to the IDC Claude Skill are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-02-02
+
+### Added
+
+- CLI reference guide for idc-index command-line tools
+- Cloud storage reference guide explaining bucket organization and direct access via s5cmd
+- GitHub Actions workflow for syncing skill updates to claude-scientific-skills repository
+
+### Fixed
+
+- Moved version field from top-level frontmatter to metadata section for compatibility
+- Corrected s5cmd command-line syntax in cloud storage guide
+- Clarified caveat about retracted data in DICOMweb guide
+
+### Changed
+
+- Updated DICOMweb reference to explain differences between the two available endpoints
+
 ## [1.0.0] - 2026-01-31
 
 ### Added
