@@ -1171,6 +1171,6 @@ columns = [(c['name'], c['type'], c.get('description', '')) for c in schema['col
 
 ### Skill Updates
 
-This skill is version 1.0.0. To check for updates:
+This skill version is available in skill metadata. To check for updates:
 - Visit the [releases page](https://github.com/ImagingDataCommons/idc-claude-skill/releases)
 - Watch the repository on GitHub (Watch → Custom → Releases)
