@@ -50,6 +50,8 @@ This skill was created and is maintained by [Andrey Fedorov (@fedorov)](https://
 
 For comprehensive documentation about the skill's capabilities, see [SKILL.md](SKILL.md).
 
+Development of this skill as part of Imaging Data Commons development has been funded in whole or in part with Federal funds from the National Cancer Institute, National Institutes of Health, under Task Order No. HHSN26110071 under Contract No. HHSN261201500003l. 
+
 ## License
 
 This skill is licensed under the MIT License. IDC data has individual collection licenses (see skill documentation for details).
