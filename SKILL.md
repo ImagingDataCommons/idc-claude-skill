@@ -255,6 +255,8 @@ tables = client.sql_query("SELECT DISTINCT table_name, column_label FROM clinica
 clinical_df = client.get_clinical_table("table_name")
 ```
 
+See `references/clinical_data_guide.md` for detailed workflows including value mapping patterns and joining clinical data with imaging.
+
 ## Data Access Options
 
 | Method | Auth Required | Best For |
@@ -1121,6 +1123,8 @@ client.sql_query("""
 """)
 ```
 
+See `references/clinical_data_guide.md` for complete patterns including value mapping and patient cohort selection.
+
 ## Related Skills
 
 The following skills complement IDC workflows for downstream analysis and visualization:
@@ -1154,6 +1158,7 @@ columns = [(c['name'], c['type'], c.get('description', '')) for c in schema['col
 
 ### Reference Documentation
 
+- **clinical_data_guide.md** - Clinical/tabular data navigation, value mapping, and joining with imaging data
 - **cloud_storage_guide.md** - Direct cloud bucket access (S3/GCS), file organization, CRDC UUIDs, versioning, and reproducibility
 - **cli_guide.md** - Complete idc-index command-line interface reference (`idc download`, `idc download-from-manifest`, `idc download-from-selection`)
 - **bigquery_guide.md** - Advanced BigQuery usage guide for complex metadata queries

@@ -5,6 +5,15 @@ All notable changes to the IDC Claude Skill are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Clinical data reference guide for navigating tabular data accompanying images
+- Detailed patterns for mapping coded values (option_code to option_description)
+- Examples for joining clinical data with imaging data via dicom_patient_id
+- Expanded BigQuery guide with comprehensive clinical data coverage (metadata tables, cross-collection queries)
+
 ## [1.1.0] - 2026-02-02
 
 ### Added

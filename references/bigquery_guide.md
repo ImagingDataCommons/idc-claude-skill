@@ -220,19 +220,76 @@ print(f"Query will scan {query_job.total_bytes_processed / 1e9:.2f} GB")
 
 ## Clinical Data
 
-Clinical data is in separate datasets with collection-specific tables. Not all collections have clinical data (started in IDC v11).
+Clinical data is in separate datasets with collection-specific tables. All clinical data available via `idc-index` is also available in BigQuery, with the same content and structure. Use BigQuery when you need complex cross-collection queries or joins that aren't possible with the local `idc-index` tables.
+
+**Datasets:**
+- `bigquery-public-data.idc_current_clinical` - current release (for exploration)
+- `bigquery-public-data.idc_v{version}_clinical` - versioned datasets (for reproducibility)
+
+Currently there are ~130 clinical tables representing ~70 collections. Not all collections have clinical data (started in IDC v11).
+
+### Clinical Table Naming
+
+Most collections use a single table: `<collection_id>_clinical`
+
+**Exception:** ACRIN collections use multiple tables for different data types (e.g., `acrin_6698_A0`, `acrin_6698_A1`, etc.).
+
+### Metadata Tables
+
+Two metadata tables help navigate clinical data:
+
+**table_metadata** - Collection-level information:
+```sql
+SELECT
+  collection_id,
+  table_name,
+  table_description
+FROM `bigquery-public-data.idc_current_clinical.table_metadata`
+WHERE collection_id = 'nlst'
+```
+
+**column_metadata** - Attribute-level details with value mappings:
+```sql
+SELECT
+  collection_id,
+  table_name,
+  column,
+  column_label,
+  data_type,
+  values
+FROM `bigquery-public-data.idc_current_clinical.column_metadata`
+WHERE collection_id = 'nlst'
+  AND column_label LIKE '%stage%'
+```
+
+The `values` field contains observed attribute values with their descriptions (same as in `idc-index` clinical_index).
+
+### Common Clinical Queries
 
 **List available clinical tables:**
 ```sql
 SELECT table_name
 FROM `bigquery-public-data.idc_current_clinical.INFORMATION_SCHEMA.TABLES`
+WHERE table_name NOT IN ('table_metadata', 'column_metadata')
+```
+
+**Find collections with specific clinical attributes:**
+```sql
+SELECT DISTINCT collection_id, table_name, column, column_label
+FROM `bigquery-public-data.idc_current_clinical.column_metadata`
+WHERE LOWER(column_label) LIKE '%chemotherapy%'
 ```
 
 **Query clinical data for a collection:**
 ```sql
--- Example: TCGA-LUAD clinical data
-SELECT *
-FROM `bigquery-public-data.idc_current_clinical.tcga_luad_clinical`
+-- Example: NLST cancer staging data
+SELECT
+  dicom_patient_id,
+  clinical_stag,
+  path_stag,
+  de_stag
+FROM `bigquery-public-data.idc_current_clinical.nlst_canc`
+WHERE clinical_stag IS NOT NULL
 LIMIT 10
 ```
 
@@ -240,19 +297,44 @@ LIMIT 10
 ```sql
 SELECT
   d.PatientID,
-  d.SeriesInstanceUID,
+  d.StudyInstanceUID,
   d.Modality,
-  c.age_at_diagnosis,
-  c.pathologic_stage
+  c.clinical_stag,
+  c.path_stag
 FROM `bigquery-public-data.idc_current.dicom_all` d
-JOIN `bigquery-public-data.idc_current_clinical.tcga_luad_clinical` c
+JOIN `bigquery-public-data.idc_current_clinical.nlst_canc` c
   ON d.PatientID = c.dicom_patient_id
-WHERE d.collection_id = 'tcga_luad'
+WHERE d.collection_id = 'nlst'
   AND d.Modality = 'CT'
+  AND c.clinical_stag = '400'  -- Stage IV
 LIMIT 20
 ```
 
-**Note:** Clinical table schemas vary by collection. Check column names with `INFORMATION_SCHEMA.COLUMNS` before querying.
+**Cross-collection clinical search:**
+```sql
+-- Find all collections with staging information
+SELECT
+  cm.collection_id,
+  cm.table_name,
+  cm.column,
+  cm.column_label
+FROM `bigquery-public-data.idc_current_clinical.column_metadata` cm
+WHERE LOWER(cm.column_label) LIKE '%stage%'
+ORDER BY cm.collection_id
+```
+
+### Key Column: dicom_patient_id
+
+Every clinical table includes `dicom_patient_id`, which matches the DICOM `PatientID` attribute in imaging tables. This is the join key between clinical and imaging data.
+
+**Note:** Clinical table schemas vary significantly by collection. Always check available columns first:
+```sql
+SELECT column_name, data_type
+FROM `bigquery-public-data.idc_current_clinical.INFORMATION_SCHEMA.COLUMNS`
+WHERE table_name = 'nlst_canc'
+```
+
+See `references/clinical_data_guide.md` for detailed workflows using `idc-index`, which provides the same clinical data without requiring BigQuery authentication.
 
 ## Important Notes
 
