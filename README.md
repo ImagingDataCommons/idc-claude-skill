@@ -39,8 +39,7 @@ This skill is included in the [K-Dense-AI/claude-scientific-skills](https://gith
 
 This skill follows [Semantic Versioning](https://semver.org/).
 
-- **Current Version:** 1.0.0
-- **Requires:** idc-index >= 0.11.7
+- **Requires:** [idc-index](https://github.com/ImagingDataCommons/idc-index)
 
 See [CHANGELOG.md](CHANGELOG.md) for version history and [Releases](https://github.com/ImagingDataCommons/idc-claude-skill/releases) for downloads.
 
@@ -50,7 +49,7 @@ This skill was created and is maintained by [Andrey Fedorov (@fedorov)](https://
 
 For comprehensive documentation about the skill's capabilities, see [SKILL.md](SKILL.md).
 
-Development of this skill as part of Imaging Data Commons development has been funded in whole or in part with Federal funds from the National Cancer Institute, National Institutes of Health, under Task Order No. HHSN26110071 under Contract No. HHSN261201500003l. 
+Development of this skill as part of Imaging Data Commons development has been funded in whole or in part with Federal funds from the National Cancer Institute, National Institutes of Health, under Task Order No. HHSN26110071 under Contract No. HHSN261201500003I. 
 
 If you use this skill in your research, please acknowledge IDC by citing the following publication:
 
