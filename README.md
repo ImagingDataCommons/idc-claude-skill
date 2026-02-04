@@ -52,6 +52,13 @@ For comprehensive documentation about the skill's capabilities, see [SKILL.md](S
 
 Development of this skill as part of Imaging Data Commons development has been funded in whole or in part with Federal funds from the National Cancer Institute, National Institutes of Health, under Task Order No. HHSN26110071 under Contract No. HHSN261201500003l. 
 
+If you use this skill in your research, please acknowledge IDC by citing the following publication:
+
+
+> Fedorov, A., Longabaugh, W. J. R., Pot, D., Clunie, D. A., Pieper, S. D., Gibbs, D. L., Bridge, C., Herrmann, M. D., Homeyer, A., Lewis, R., Aerts, H. J. W. L., Krishnaswamy, D., Thiriveedhi, V. K., Ciausu, C., Schacherer, D. P., Bontempi, D., Pihl, T., Wagner, U., Farahani, K., Kim, E. & Kikinis, R. National cancer institute imaging data commons: Toward transparency, reproducibility, and scalability in imaging artificial intelligence. _Radiographics_ 43, (2023). [https://doi.org/10.1148/rg.230180](https://doi.org/10.1148/rg.230180)
+  
+
+
 ## License
 
 This skill is licensed under the MIT License. IDC data has individual collection licenses (see skill documentation for details).
