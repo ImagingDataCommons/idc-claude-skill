@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-02-04
+
 ### Added
 
 - Clinical data reference guide for navigating tabular data accompanying images
