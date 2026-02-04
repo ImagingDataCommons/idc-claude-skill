@@ -695,14 +695,15 @@ for i in range(0, len(results), batch_size):
 
 ### 7. Advanced Queries with BigQuery
 
-For queries requiring full DICOM metadata, complex JOINs, or clinical data tables, use Google BigQuery. Requires GCP account with billing enabled.
+For queries requiring full DICOM metadata, complex JOINs, clinical data tables, or private DICOM elements, use Google BigQuery. Requires GCP account with billing enabled.
 
 **Quick reference:**
 - Dataset: `bigquery-public-data.idc_current.*`
 - Main table: `dicom_all` (combined metadata)
 - Full metadata: `dicom_metadata` (all DICOM tags)
+- Private elements: `OtherElements` column (vendor-specific tags like diffusion b-values)
 
-See `references/bigquery_guide.md` for setup, table schemas, query patterns, and cost optimization.
+See `references/bigquery_guide.md` for setup, table schemas, query patterns, private element access, and cost optimization.
 
 ### 8. Tool Selection Guide
 

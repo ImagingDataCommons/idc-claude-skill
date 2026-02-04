@@ -24,6 +24,7 @@ Use BigQuery instead of `idc-index` when you need:
 - Complex joins across clinical data tables
 - DICOM sequence attributes (nested structures)
 - Queries on fields not in the idc-index mini-index
+- Private DICOM elements (vendor-specific tags in OtherElements column)
 
 ## Accessing IDC in BigQuery
 
@@ -163,6 +164,190 @@ JOIN `bigquery-public-data.idc_current.dicom_all` src
 WHERE src.collection_id = 'qin_prostate_repeatability'
 LIMIT 10
 ```
+
+## Private DICOM Elements
+
+Private DICOM elements are vendor-specific attributes not defined in the DICOM standard. They often contain essential acquisition parameters (like diffusion b-values, gradient directions, or scanner-specific settings) that are critical for image interpretation and analysis.
+
+### Understanding Private Elements
+
+**How private elements work:**
+- Private elements use odd-numbered group numbers (e.g., 0019, 0043, 2001)
+- Each vendor reserves blocks of 256 elements using Private Creator identifiers at positions (gggg,0010-00FF)
+- For example, GE uses Private Creator "GEMS_PARM_01" at (0043,0010) to reserve elements (0043,1000-10FF)
+
+**Standard vs. private tags:** Some parameters exist in both forms:
+| Parameter | Standard Tag | GE | Siemens | Philips |
+|-----------|--------------|-----|---------|---------|
+| Diffusion b-value | (0018,9087) | (0043,1039) | (0019,100C) | (2001,1003) |
+| Private Creator | - | GEMS_PARM_01 | SIEMENS CSA HEADER | Philips Imaging |
+
+Older scanners typically populate only private tags; newer scanners may use standard tags. Always check both.
+
+**Challenges with private elements:**
+- Require manufacturer DICOM Conformance Statements to interpret
+- Tag meanings can change between software versions
+- May be removed during de-identification for HIPAA compliance
+- Value encoding varies (string vs. numeric, different units)
+
+### Accessing Private Elements in BigQuery
+
+Private elements are stored in the `OtherElements` column of `dicom_all` as an array of structs with `Tag` and `Data` fields.
+
+**Tag notation:** DICOM notation (0043,1039) becomes BigQuery format `Tag_00431039`.
+
+### Private Element Query Patterns
+
+#### Discover Available Private Tags
+
+List all non-empty private tags for a collection:
+
+```sql
+SELECT
+  other_elements.Tag,
+  COUNT(*) AS instance_count,
+  ARRAY_AGG(DISTINCT other_elements.Data[SAFE_OFFSET(0)] IGNORE NULLS LIMIT 5) AS sample_values
+FROM `bigquery-public-data.idc_current.dicom_all`,
+  UNNEST(OtherElements) AS other_elements
+WHERE collection_id = 'qin_prostate_repeatability'
+  AND Modality = 'MR'
+  AND ARRAY_LENGTH(other_elements.Data) > 0
+  AND other_elements.Data[SAFE_OFFSET(0)] IS NOT NULL
+  AND other_elements.Data[SAFE_OFFSET(0)] != ''
+GROUP BY other_elements.Tag
+ORDER BY instance_count DESC
+```
+
+For a specific series:
+
+```sql
+SELECT
+  other_elements.Tag,
+  ARRAY_AGG(DISTINCT other_elements.Data[SAFE_OFFSET(0)] IGNORE NULLS) AS values
+FROM `bigquery-public-data.idc_current.dicom_all`,
+  UNNEST(OtherElements) AS other_elements
+WHERE SeriesInstanceUID = '1.3.6.1.4.1.14519.5.2.1.7311.5101.206828891270520544417996275680'
+  AND ARRAY_LENGTH(other_elements.Data) > 0
+  AND other_elements.Data[SAFE_OFFSET(0)] IS NOT NULL
+  AND other_elements.Data[SAFE_OFFSET(0)] != ''
+GROUP BY other_elements.Tag
+```
+
+To identify the Private Creator for a tag, look for the reservation element in the same group. For example, if you find `Tag_00431039`, the Private Creator is at `Tag_00430010` (the tag that reserves block 10xx in group 0043).
+
+#### Identify Equipment Manufacturer
+
+Determine what equipment produced the data to find the correct DICOM Conformance Statement:
+
+```sql
+SELECT DISTINCT Manufacturer, ManufacturerModelName
+FROM `bigquery-public-data.idc_current.dicom_all`
+WHERE collection_id = 'qin_prostate_repeatability'
+  AND Modality = 'MR'
+```
+
+#### Access Private Element Values
+
+Use `UNNEST` to access individual private elements:
+
+```sql
+SELECT
+  SeriesInstanceUID,
+  SeriesDescription,
+  other_elements.Data[SAFE_OFFSET(0)] AS b_value
+FROM `bigquery-public-data.idc_current.dicom_all`,
+  UNNEST(OtherElements) AS other_elements
+WHERE collection_id = 'qin_prostate_repeatability'
+  AND other_elements.Tag = 'Tag_00431039'
+LIMIT 10
+```
+
+#### Aggregate Values by Series
+
+Collect all unique values across slices in a series:
+
+```sql
+SELECT
+  SeriesInstanceUID,
+  ANY_VALUE(SeriesDescription) AS SeriesDescription,
+  ARRAY_AGG(DISTINCT other_elements.Data[SAFE_OFFSET(0)]) AS b_values
+FROM `bigquery-public-data.idc_current.dicom_all`,
+  UNNEST(OtherElements) AS other_elements
+WHERE collection_id = 'qin_prostate_repeatability'
+  AND other_elements.Tag = 'Tag_00431039'
+GROUP BY SeriesInstanceUID
+```
+
+#### Combine Standard and Private Filters
+
+Filter using both standard DICOM attributes and private element values:
+
+```sql
+SELECT
+  PatientID,
+  SeriesInstanceUID,
+  ANY_VALUE(SeriesDescription) AS SeriesDescription,
+  ARRAY_AGG(DISTINCT other_elements.Data[SAFE_OFFSET(0)]) AS b_values,
+  COUNT(DISTINCT SOPInstanceUID) AS n_slices
+FROM `bigquery-public-data.idc_current.dicom_all`,
+  UNNEST(OtherElements) AS other_elements
+WHERE collection_id = 'qin_prostate_repeatability'
+  AND Modality = 'MR'
+  AND other_elements.Tag = 'Tag_00431039'
+  AND ImageType[SAFE_OFFSET(0)] = 'ORIGINAL'
+  AND other_elements.Data[SAFE_OFFSET(0)] = '1400'
+GROUP BY PatientID, SeriesInstanceUID
+ORDER BY PatientID
+```
+
+#### Cross-Collection Analysis
+
+Survey usage of a private tag across all IDC collections:
+
+```sql
+SELECT
+  collection_id,
+  ARRAY_TO_STRING(ARRAY_AGG(DISTINCT other_elements.Data[SAFE_OFFSET(0)] IGNORE NULLS), ', ') AS values_found,
+  ARRAY_AGG(DISTINCT Manufacturer IGNORE NULLS) AS manufacturers
+FROM `bigquery-public-data.idc_current.dicom_all`,
+  UNNEST(OtherElements) AS other_elements
+WHERE other_elements.Tag = 'Tag_00431039'
+  AND other_elements.Data[SAFE_OFFSET(0)] IS NOT NULL
+  AND other_elements.Data[SAFE_OFFSET(0)] != ''
+GROUP BY collection_id
+ORDER BY collection_id
+```
+
+### Workflow: Finding and Using Private Tags
+
+1. **Discover available private tags** in your collection using the discovery query above
+2. **Identify the manufacturer** to know which conformance statement to consult
+3. **Find the DICOM Conformance Statement** from the manufacturer's website (see Resources below)
+4. **Search the conformance statement** for the parameter you need (e.g., "b_value", "gradient") to understand what each tag contains
+5. **Convert tag to BigQuery format:** (gggg,eeee) → `Tag_ggggeeee`
+6. **Query and verify** results visually in the IDC Viewer
+
+### Data Quality Notes
+
+- Some collections show unrealistic values (e.g., b-value "1000000600") indicating encoding issues or different conventions
+- IDC data is de-identified; private tags containing PHI may have been removed or modified
+- The same tag may have different meanings across software versions
+- Always verify query results visually using the [IDC Viewer](https://viewer.imaging.datacommons.cancer.gov/) before large-scale analysis
+
+### Private Element Resources
+
+**Manufacturer DICOM Conformance Statements:**
+- [GE Healthcare MR](https://www.gehealthcare.com/products/interoperability/dicom/magnetic-resonance-imaging-dicom-conformance-statements)
+- [Siemens MR](https://www.siemens-healthineers.com/services/it-standards/dicom-conformance-statements-magnetic-resonance)
+- [Siemens CT](https://www.siemens-healthineers.com/services/it-standards/dicom-conformance-statements-computed-tomography)
+
+**DICOM Standard:**
+- [Part 5 Section 7.8 - Private Data Elements](https://dicom.nema.org/medical/dicom/current/output/chtml/part05/sect_7.8.html)
+- [Part 15 Appendix E - De-identification Profiles](https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_e.html)
+
+**Community Resources:**
+- [NAMIC Wiki: DWI/DTI DICOM](https://www.na-mic.org/wiki/NAMIC_Wiki:DTI:DICOM_for_DWI_and_DTI) - comprehensive vendor comparison for diffusion imaging
+- [StandardizeBValue](https://github.com/nslay/StandardizeBValue) - tool to extract vendor b-values to standard tags
 
 ## Using Query Results with idc-index
 

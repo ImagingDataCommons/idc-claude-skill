@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Detailed patterns for mapping coded values (option_code to option_description)
 - Examples for joining clinical data with imaging data via dicom_patient_id
 - Expanded BigQuery guide with comprehensive clinical data coverage (metadata tables, cross-collection queries)
+- Private DICOM elements documentation in BigQuery guide covering vendor-specific tags (e.g., diffusion b-values)
+- Query patterns for discovering, accessing, and filtering by private tags in the OtherElements column
 
 ## [1.1.0] - 2026-02-02
 
