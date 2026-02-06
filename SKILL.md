@@ -5,7 +5,7 @@ license: This skill is provided under the MIT License. IDC data itself has indiv
 metadata:
     version: 1.2.0
     skill-author: Andrey Fedorov, @fedorov
-    idc-index: "0.11.7"
+    idc-index: "0.11.8"
     repository: https://github.com/ImagingDataCommons/idc-claude-skill
 ---
 
@@ -89,6 +89,8 @@ The `idc-index` package provides multiple metadata index tables, accessible via 
 | `sm_index` | 1 row = 1 slide microscopy series | fetch_index() | Slide Microscopy (pathology) series metadata |
 | `sm_instance_index` | 1 row = 1 slide microscopy instance | fetch_index() | Instance-level (SOPInstanceUID) metadata for slide microscopy |
 | `seg_index` | 1 row = 1 DICOM Segmentation series | fetch_index() | Segmentation metadata: algorithm, segment count, reference to source image series |
+| `ann_index` | 1 row = 1 DICOM ANN series | fetch_index() | Microscopy Bulk Simple Annotations series metadata; references annotated image series |
+| `ann_group_index` | 1 row = 1 annotation group | fetch_index() | Detailed annotation group metadata: graphic type, annotation count, property codes, algorithm |
 
 **Auto** = loaded automatically when `IDCClient()` is instantiated
 **fetch_index()** = requires `client.fetch_index("table_name")` to load
@@ -107,8 +109,9 @@ The `idc-index` package provides multiple metadata index tables, accessible via 
 | `source_DOI` | index, analysis_results_index | Link by publication DOI |
 | `crdc_series_uuid` | index, prior_versions_index | Link by CRDC unique identifier |
 | `Modality` | index, prior_versions_index | Filter by imaging modality |
-| `SeriesInstanceUID` | index, seg_index | Link segmentation series to its index metadata |
+| `SeriesInstanceUID` | index, seg_index, ann_index, ann_group_index | Link segmentation/annotation series to its index metadata |
 | `segmented_SeriesInstanceUID` | seg_index → index | Link segmentation to its source image series (join seg_index.segmented_SeriesInstanceUID = index.SeriesInstanceUID) |
+| `referenced_SeriesInstanceUID` | ann_index → index | Link annotation to its source image series (join ann_index.referenced_SeriesInstanceUID = index.SeriesInstanceUID) |
 
 **Note:** `Subjects`, `Updated`, and `Description` appear in multiple tables but have different meanings (counts vs identifiers, different update contexts).
 
@@ -1093,6 +1096,46 @@ client.sql_query("""
     WHERE s.AlgorithmName LIKE '%TotalSegmentator%'
     GROUP BY seg_info.collection_id
     ORDER BY seg_count DESC
+""")
+
+# Use ann_index and ann_group_index for Microscopy Bulk Simple Annotations
+client.fetch_index("ann_index")
+client.fetch_index("ann_group_index")
+
+# Find annotation series and their referenced images
+client.sql_query("""
+    SELECT
+        a.SeriesInstanceUID as ann_series,
+        a.AnnotationCoordinateType,
+        a.referenced_SeriesInstanceUID as source_series
+    FROM ann_index a
+    LIMIT 10
+""")
+
+# Get annotation group details (graphic types, counts, algorithms)
+client.sql_query("""
+    SELECT
+        GraphicType,
+        SUM(NumberOfAnnotations) as total_annotations,
+        COUNT(*) as group_count
+    FROM ann_group_index
+    GROUP BY GraphicType
+    ORDER BY total_annotations DESC
+""")
+
+# Find annotations with their source slide microscopy context
+client.sql_query("""
+    SELECT
+        i.collection_id,
+        g.GraphicType,
+        g.AnnotationPropertyType_CodeMeaning,
+        g.AlgorithmName,
+        g.NumberOfAnnotations
+    FROM ann_group_index g
+    JOIN ann_index a ON g.SeriesInstanceUID = a.SeriesInstanceUID
+    JOIN index i ON a.referenced_SeriesInstanceUID = i.SeriesInstanceUID
+    WHERE g.AlgorithmName IS NOT NULL
+    LIMIT 10
 """)
 ```
 

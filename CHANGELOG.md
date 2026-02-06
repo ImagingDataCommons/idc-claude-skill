@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Documentation for new `ann_index` and `ann_group_index` tables (Microscopy Bulk Simple Annotations)
+- Example queries for annotation series and annotation group metadata
+- Explanation of downloaded DICOM file naming convention (`<crdc_instance_uuid>.dcm`)
+
+### Changed
+
+- Updated to idc-index 0.11.8 (IDC data version v23)
+
 ## [1.2.0] - 2026-02-04
 
 ### Added
