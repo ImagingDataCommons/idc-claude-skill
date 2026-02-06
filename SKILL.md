@@ -301,7 +301,7 @@ pip install --upgrade idc-index
 
 **Important:** New IDC data release will always trigger a new version of `idc-index`. Always use `--upgrade` flag while installing, unless an older version is needed for reproducibility.
 
-**Tested with:** idc-index 0.11.7 (IDC data version v23)
+**Tested with:** idc-index 0.11.8 (IDC data version v23)
 
 **Optional (for data analysis):**
 ```bash
@@ -483,6 +483,15 @@ client.download_from_selection(
 )
 # Results in: ./data/flat/*.dcm
 ```
+
+**Downloaded file names:**
+
+Individual DICOM files are named using their CRDC instance UUID: `<crdc_instance_uuid>.dcm` (e.g., `0d73f84e-70ae-4eeb-96a0-1c613b5d9229.dcm`). This UUID-based naming:
+- Enables version tracking (UUIDs change when file content changes)
+- Matches cloud storage organization (`s3://idc-open-data/<crdc_series_uuid>/<crdc_instance_uuid>.dcm`)
+- Differs from DICOM UIDs (SOPInstanceUID) which are preserved inside the file metadata
+
+To identify files, use the `crdc_instance_uuid` column in queries or read DICOM metadata (SOPInstanceUID) from the files.
 
 ### Command-Line Download
 
