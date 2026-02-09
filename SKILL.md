@@ -139,6 +139,18 @@ result = client.sql_query("""
     LIMIT 10
 """)
 
+# Join ann_group_index with ann_index and index for annotation details
+client.fetch_index("ann_index")
+client.fetch_index("ann_group_index")
+result = client.sql_query("""
+    SELECT g.AnnotationGroupLabel, g.GraphicType, g.NumberOfAnnotations,
+           i.collection_id, a.referenced_SeriesInstanceUID as source_series
+    FROM ann_group_index g
+    JOIN ann_index a ON g.SeriesInstanceUID = a.SeriesInstanceUID
+    JOIN index i ON a.SeriesInstanceUID = i.SeriesInstanceUID
+    LIMIT 10
+""")
+
 # Join seg_index with index to find segmentations and their source images
 client.fetch_index("seg_index")
 result = client.sql_query("""
@@ -232,7 +244,7 @@ Most common columns for queries (use `indices_overview` for complete list and de
 | `PatientID` | STRING | Yes | Patient identifier |
 | `StudyInstanceUID` | STRING | Yes | DICOM Study UID |
 | `SeriesInstanceUID` | STRING | Yes | DICOM Series UID — use for downloads/viewing |
-| `Modality` | STRING | Yes | Imaging modality (CT, MR, PT, SM, etc.) |
+| `Modality` | STRING | Yes | Imaging modality (CT, MR, PT, SM, SEG, ANN, RTSTRUCT, etc.) |
 | `BodyPartExamined` | STRING | Yes | Anatomical region |
 | `SeriesDescription` | STRING | Yes | Description of the series |
 | `Manufacturer` | STRING | Yes | Equipment manufacturer |
@@ -717,6 +729,13 @@ For queries requiring full DICOM metadata, complex JOINs, clinical data tables, 
 
 See `references/bigquery_guide.md` for setup, table schemas, query patterns, private element access, and cost optimization.
 
+**Before using BigQuery**, always check if a specialized index table already has the metadata you need:
+1. Use `client.indices_overview` or the [idc-index indices reference](https://idc-index.readthedocs.io/en/latest/indices_reference.html) to discover all available tables and their columns
+2. Fetch the relevant index: `client.fetch_index("table_name")`
+3. Query locally with `client.sql_query()` (free, no GCP account needed)
+
+Common specialized indices: `seg_index` (segmentations), `ann_index` / `ann_group_index` (microscopy annotations), `sm_index` (slide microscopy), `collections_index` (collection metadata). Only use BigQuery if you need private DICOM elements or attributes not in any index.
+
 ### 8. Tool Selection Guide
 
 | Task | Tool | Reference |
@@ -1099,59 +1118,40 @@ client.sql_query("""
 """)
 
 # Use ann_index and ann_group_index for Microscopy Bulk Simple Annotations
+# ann_group_index has AnnotationGroupLabel, GraphicType, NumberOfAnnotations, AlgorithmName
 client.fetch_index("ann_index")
 client.fetch_index("ann_group_index")
-
-# Find annotation series and their referenced images
 client.sql_query("""
-    SELECT
-        a.SeriesInstanceUID as ann_series,
-        a.AnnotationCoordinateType,
-        a.referenced_SeriesInstanceUID as source_series
-    FROM ann_index a
-    LIMIT 10
-""")
-
-# Get annotation group details (graphic types, counts, algorithms)
-client.sql_query("""
-    SELECT
-        GraphicType,
-        SUM(NumberOfAnnotations) as total_annotations,
-        COUNT(*) as group_count
-    FROM ann_group_index
-    GROUP BY GraphicType
-    ORDER BY total_annotations DESC
-""")
-
-# Find annotations with their source slide microscopy context
-client.sql_query("""
-    SELECT
-        i.collection_id,
-        g.GraphicType,
-        g.AnnotationPropertyType_CodeMeaning,
-        g.AlgorithmName,
-        g.NumberOfAnnotations
+    SELECT g.AnnotationGroupLabel, g.GraphicType, g.NumberOfAnnotations, i.collection_id
     FROM ann_group_index g
     JOIN ann_index a ON g.SeriesInstanceUID = a.SeriesInstanceUID
-    JOIN index i ON a.referenced_SeriesInstanceUID = i.SeriesInstanceUID
+    JOIN index i ON a.SeriesInstanceUID = i.SeriesInstanceUID
     WHERE g.AlgorithmName IS NOT NULL
     LIMIT 10
 """)
+# See references/digital_pathology_guide.md for AnnotationGroupLabel filtering, SM+ANN joins, and more
 ```
 
-### Query slide microscopy data
+### Query slide microscopy and annotation data
+
+Use `sm_index` for slide microscopy metadata and `ann_index`/`ann_group_index` for annotations on slides (DICOM ANN objects). Filter annotation groups by `AnnotationGroupLabel` to find annotations by name.
+
 ```python
-# sm_index has detailed metadata; join with index for collection_id
 client.fetch_index("sm_index")
+client.fetch_index("ann_index")
+client.fetch_index("ann_group_index")
+
+# Example: find annotation groups by label within a collection
 client.sql_query("""
-    SELECT i.collection_id, COUNT(*) as slides,
-           MIN(s.min_PixelSpacing_2sf) as min_resolution
-    FROM sm_index s
-    JOIN index i ON s.SeriesInstanceUID = i.SeriesInstanceUID
-    GROUP BY i.collection_id
-    ORDER BY slides DESC
+    SELECT g.AnnotationGroupLabel, g.GraphicType, g.NumberOfAnnotations
+    FROM ann_group_index g
+    JOIN index i ON g.SeriesInstanceUID = i.SeriesInstanceUID
+    WHERE i.collection_id = 'your_collection_id'
+      AND LOWER(g.AnnotationGroupLabel) LIKE '%keyword%'
 """)
 ```
+
+See `references/digital_pathology_guide.md` for SM queries, ANN filtering patterns, SM+ANN cross-references, and join examples.
 
 ### Estimate download size
 ```python
@@ -1186,8 +1186,7 @@ The following skills complement IDC workflows for downstream analysis and visual
 - **pydicom** - Read, write, and manipulate downloaded DICOM files. Use for extracting pixel data, reading metadata, anonymization, and format conversion. Essential for working with IDC radiology data (CT, MR, PET).
 
 ### Pathology and Slide Microscopy
-- **histolab** - Lightweight tile extraction and preprocessing for whole slide images. Use for basic slide processing, tissue detection, and dataset preparation from IDC slide microscopy data.
-- **pathml** - Full-featured computational pathology toolkit. Use for advanced WSI analysis including multiplexed imaging, nucleus segmentation, and ML model training on pathology data downloaded from IDC.
+See `references/digital_pathology_guide.md` for recommended tools (histolab, pathml).
 
 ### Metadata Visualization
 - **matplotlib** - Low-level plotting for full customization. Use for creating static figures summarizing IDC query results (bar charts of modalities, histograms of series counts, etc.).
@@ -1214,6 +1213,7 @@ columns = [(c['name'], c['type'], c.get('description', '')) for c in schema['col
 - **clinical_data_guide.md** - Clinical/tabular data navigation, value mapping, and joining with imaging data
 - **cloud_storage_guide.md** - Direct cloud bucket access (S3/GCS), file organization, CRDC UUIDs, versioning, and reproducibility
 - **cli_guide.md** - Complete idc-index command-line interface reference (`idc download`, `idc download-from-manifest`, `idc download-from-selection`)
+- **digital_pathology_guide.md** - Slide microscopy and annotation (ANN) query patterns, index schemas, and pathology tool recommendations
 - **bigquery_guide.md** - Advanced BigQuery usage guide for complex metadata queries
 - **dicomweb_guide.md** - DICOMweb endpoint URLs, code examples, and Google Healthcare API implementation details
 - **[indices_reference](https://idc-index.readthedocs.io/en/latest/indices_reference.html)** - External documentation for index tables (may be ahead of the installed version)

@@ -9,12 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Digital pathology reference guide (`references/digital_pathology_guide.md`) with SM, ANN, and SEG query patterns, join examples, and pathology tool recommendations
+- `seg_index` coverage in digital pathology guide with cross-domain clarification (SEG used for both radiology and pathology) and query for finding pathology-specific segmentations
+- `AnnotationGroupLabel` filtering examples for finding annotation groups by name
+- SM + ANN cross-reference queries showing how to find annotations on slide microscopy images
+- Index discovery guidance before BigQuery section to ensure all local indices are checked first
 - Documentation for new `ann_index` and `ann_group_index` tables (Microscopy Bulk Simple Annotations)
 - Example queries for annotation series and annotation group metadata
 - Explanation of downloaded DICOM file naming convention (`<crdc_instance_uuid>.dcm`)
 
 ### Changed
 
+- Refactored detailed SM/ANN content from SKILL.md into `references/digital_pathology_guide.md`, keeping brief summaries with pointers in main skill
 - Updated to idc-index 0.11.8 (IDC data version v23)
 
 ## [1.2.0] - 2026-02-04
