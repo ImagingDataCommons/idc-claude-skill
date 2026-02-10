@@ -58,6 +58,30 @@ print(stats)
 - Checking data licenses before use in research or commercial applications
 - Visualizing medical images in a browser without local DICOM viewer software
 
+## Quick Navigation
+
+**Core Sections (inline):**
+- IDC Data Model - Collection and analysis result hierarchy
+- Index Tables - Available tables and joining patterns
+- Installation - Package setup and version verification
+- Core Capabilities - Essential API patterns (query, download, visualize, license, citations, batch)
+- Best Practices - Usage guidelines
+- Troubleshooting - Common issues and solutions
+
+**Reference Guides (load on demand):**
+
+| Guide | When to Load |
+|-------|--------------|
+| `index_tables_guide.md` | Complex JOINs, schema discovery, DataFrame access |
+| `use_cases.md` | End-to-end workflow examples (training datasets, batch downloads) |
+| `sql_patterns.md` | Quick SQL patterns for filter discovery, annotations, size estimation |
+| `clinical_data_guide.md` | Clinical/tabular data, imaging+clinical joins, value mapping |
+| `cloud_storage_guide.md` | Direct S3/GCS access, versioning, UUID mapping |
+| `dicomweb_guide.md` | DICOMweb endpoints, PACS integration |
+| `digital_pathology_guide.md` | Slide microscopy (SM), annotations (ANN), pathology workflows |
+| `bigquery_guide.md` | Full DICOM metadata, private elements (requires GCP) |
+| `cli_guide.md` | Command-line tools (`idc download`, manifest files) |
+
 ## IDC Data Model
 
 IDC adds two grouping levels above the standard DICOM hierarchy (Patient → Study → Series → Instance):
