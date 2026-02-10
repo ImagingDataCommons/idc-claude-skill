@@ -104,6 +104,8 @@ Use `collection_id` to find original imaging data, may include annotations depos
 
 The `idc-index` package provides multiple metadata index tables, accessible via SQL or as pandas DataFrames.
 
+**Complete index table documentation:** Use https://idc-index.readthedocs.io/en/latest/indices_reference.html for quick check of available tables and columns without executing any code.
+
 **Important:** Use `client.indices_overview` to get current table descriptions and column schemas. This is the authoritative source for available columns and their types — always query it when writing SQL or exploring data structure.
 
 ### Available Tables
