@@ -804,12 +804,20 @@ columns = [(c['name'], c['type'], c.get('description', '')) for c in schema['col
 
 ### Reference Documentation
 
-- **clinical_data_guide.md** - Clinical/tabular data navigation, value mapping, and joining with imaging data
-- **cloud_storage_guide.md** - Direct cloud bucket access (S3/GCS), file organization, CRDC UUIDs, versioning, and reproducibility
-- **cli_guide.md** - Complete idc-index command-line interface reference (`idc download`, `idc download-from-manifest`, `idc download-from-selection`)
-- **digital_pathology_guide.md** - Slide microscopy and annotation (ANN) query patterns, index schemas, and pathology tool recommendations
-- **bigquery_guide.md** - Advanced BigQuery usage guide for complex metadata queries
-- **dicomweb_guide.md** - DICOMweb endpoint URLs, code examples, and Google Healthcare API implementation details
+Load these guides on demand based on user needs:
+
+| Guide | When to Load |
+|-------|--------------|
+| `index_tables_guide.md` | Complex JOINs, schema discovery, DataFrame access |
+| `use_cases.md` | End-to-end workflow examples (training datasets, batch downloads) |
+| `sql_patterns.md` | Quick SQL patterns for filter discovery, annotations, size estimation |
+| `clinical_data_guide.md` | Clinical/tabular data, imaging+clinical joins, value mapping |
+| `cloud_storage_guide.md` | Direct S3/GCS access, versioning, UUID mapping, reproducibility |
+| `dicomweb_guide.md` | DICOMweb endpoints, PACS integration, Google Healthcare API |
+| `digital_pathology_guide.md` | Slide microscopy (SM), annotations (ANN), pathology workflows |
+| `bigquery_guide.md` | Full DICOM metadata, private elements (requires GCP account) |
+| `cli_guide.md` | Command-line tools (`idc download`, manifest files) |
+
 - **[indices_reference](https://idc-index.readthedocs.io/en/latest/indices_reference.html)** - External documentation for index tables (may be ahead of the installed version)
 
 ### External Links
