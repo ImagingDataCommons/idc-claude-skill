@@ -26,5 +26,6 @@ jobs:
             --no-progress
             --accept 200,204,301,302,308
             --exclude-path ./CHANGELOG.md
+            --config .lychee.toml
             '**/*.md'
           fail: true
