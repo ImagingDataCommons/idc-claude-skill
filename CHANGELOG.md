@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Refactored detailed SM/ANN content from SKILL.md into `references/digital_pathology_guide.md`, keeping brief summaries with pointers in main skill
 - Updated to idc-index 0.11.8 (IDC data version v23)
+- Made IDC version (v23) more prominent in SKILL.md with verification guidance to prevent responses using older versions
 
 ## [1.2.0] - 2026-02-04
 

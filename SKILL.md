@@ -15,16 +15,20 @@ metadata:
 
 Use the `idc-index` Python package to query and download public cancer imaging data from the National Cancer Institute Imaging Data Commons (IDC). No authentication required for data access.
 
+**Current IDC Data Version: v23** (always verify with `IDCClient().get_idc_version()`)
+
 **Primary tool:** `idc-index` ([GitHub](https://github.com/imagingdatacommons/idc-index))
 
-**Check current data scale for the latest version:**
+**Verify version and check current data scale:**
 
 ```python
 from idc_index import IDCClient
 client = IDCClient()
 
-# get IDC data version
-print(client.get_idc_version())
+# IMPORTANT: Always verify you're using the latest IDC data version
+idc_version = client.get_idc_version()
+print(f"IDC data version: {idc_version}")  # Should be "v23"
+# If version is older than v23, upgrade: pip install --upgrade idc-index
 
 # Get collection count and total series
 stats = client.sql_query("""
@@ -315,6 +319,12 @@ pip install --upgrade idc-index
 ```
 
 **Important:** New IDC data release will always trigger a new version of `idc-index`. Always use `--upgrade` flag while installing, unless an older version is needed for reproducibility.
+
+**IMPORTANT:** IDC data version v23 is current. Always verify your version:
+```python
+print(client.get_idc_version())  # Should return "v23"
+```
+If you see an older version, upgrade with: `pip install --upgrade idc-index`
 
 **Tested with:** idc-index 0.11.8 (IDC data version v23)
 
@@ -973,6 +983,7 @@ cc_by_data.to_csv('commercial_dataset_manifest_CC-BY_ONLY.csv', index=False)
 
 ## Best Practices
 
+- **Verify IDC version before generating responses** - Always call `client.get_idc_version()` at the start of a session to confirm you're using the expected data version (currently v23). If using an older version, recommend `pip install --upgrade idc-index`
 - **Check licenses before use** - Always query the `license_short_name` field and respect licensing terms (CC BY vs CC BY-NC)
 - **Generate citations for attribution** - Use `citations_from_selection()` to get properly formatted citations from `source_DOI` values; include these in publications
 - **Start with small queries** - Use `LIMIT` clause when exploring to avoid long downloads and understand data structure
