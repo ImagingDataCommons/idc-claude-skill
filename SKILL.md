@@ -3,9 +3,9 @@ name: imaging-data-commons
 description: Query and download public cancer imaging data from NCI Imaging Data Commons using idc-index. Use for accessing large-scale radiology (CT, MR, PET) and pathology datasets for AI training or research. No authentication required. Query by metadata, visualize in browser, check licenses.
 license: This skill is provided under the MIT License. IDC data itself has individual licensing (mostly CC-BY, some CC-NC) that must be respected when using the data.
 metadata:
-    version: 1.2.0
+    version: 1.3.0
     skill-author: Andrey Fedorov, @fedorov
-    idc-index: "0.11.8"
+    idc-index: "0.11.9"
     idc-data-version: "v23"
     repository: https://github.com/ImagingDataCommons/idc-claude-skill
 ---
@@ -122,6 +122,7 @@ The `idc-index` package provides multiple metadata index tables, accessible via 
 | `seg_index` | 1 row = 1 DICOM Segmentation series | fetch_index() | Segmentation metadata: algorithm, segment count, reference to source image series |
 | `ann_index` | 1 row = 1 DICOM ANN series | fetch_index() | Microscopy Bulk Simple Annotations series metadata; references annotated image series |
 | `ann_group_index` | 1 row = 1 annotation group | fetch_index() | Detailed annotation group metadata: graphic type, annotation count, property codes, algorithm |
+| `contrast_index` | 1 row = 1 series with contrast info | fetch_index() | Contrast agent metadata: agent name, ingredient, administration route (CT, MR, PT, XA, RF) |
 
 **Auto** = loaded automatically when `IDCClient()` is instantiated
 **fetch_index()** = requires `client.fetch_index("table_name")` to load
@@ -140,7 +141,7 @@ The `idc-index` package provides multiple metadata index tables, accessible via 
 | `source_DOI` | index, analysis_results_index | Link by publication DOI |
 | `crdc_series_uuid` | index, prior_versions_index | Link by CRDC unique identifier |
 | `Modality` | index, prior_versions_index | Filter by imaging modality |
-| `SeriesInstanceUID` | index, seg_index, ann_index, ann_group_index | Link segmentation/annotation series to its index metadata |
+| `SeriesInstanceUID` | index, seg_index, ann_index, ann_group_index, contrast_index | Link segmentation/annotation/contrast series to its index metadata |
 | `segmented_SeriesInstanceUID` | seg_index → index | Link segmentation to its source image series (join seg_index.segmented_SeriesInstanceUID = index.SeriesInstanceUID) |
 | `referenced_SeriesInstanceUID` | ann_index → index | Link annotation to its source image series (join ann_index.referenced_SeriesInstanceUID = index.SeriesInstanceUID) |
 
@@ -213,7 +214,7 @@ print(client.get_idc_version())  # Should return "v23"
 ```
 If you see an older version, upgrade with: `pip install --upgrade idc-index`
 
-**Tested with:** idc-index 0.11.8 (IDC data version v23)
+**Tested with:** idc-index 0.11.9 (IDC data version v23)
 
 **Optional (for data analysis):**
 ```bash

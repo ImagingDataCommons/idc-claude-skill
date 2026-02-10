@@ -1,6 +1,6 @@
 # Index Tables Guide for IDC
 
-**Tested with:** idc-index 0.11.8 (IDC data version v23)
+**Tested with:** idc-index 0.11.9 (IDC data version v23)
 
 This guide covers the structure and access patterns for IDC index tables: programmatic schema discovery, DataFrame access, and join column references. For the overview of available tables and their purposes, see the "Index Tables" section in the main SKILL.md.
 
@@ -124,6 +124,7 @@ Use this table to identify join columns between index tables. Always call `clien
 | `index` | `ann_index` | `index.SeriesInstanceUID = ann_index.SeriesInstanceUID` |
 | `ann_index` | `ann_group_index` | `ann_index.SeriesInstanceUID = ann_group_index.SeriesInstanceUID` |
 | `index` | `clinical_index` | `index.collection_id = clinical_index.collection_id` (then filter by patient) |
+| `index` | `contrast_index` | `index.SeriesInstanceUID = contrast_index.SeriesInstanceUID` |
 
 For complete query examples using these joins, see `references/sql_patterns.md`.
 

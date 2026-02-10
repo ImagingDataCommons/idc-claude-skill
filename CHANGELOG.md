@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-02-10
+
 ### Added
 
 - Digital pathology reference guide (`references/digital_pathology_guide.md`) with SM, ANN, and SEG query patterns, join examples, and pathology tool recommendations
@@ -23,13 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - `references/use_cases.md` - End-to-end workflow examples
 - Quick Navigation section in SKILL.md with decision triggers for when to load each reference
 - `idc-data-version` field in frontmatter metadata
+- Documentation for new `contrast_index` table (contrast bolus metadata for CT, MR, PT, XA, RF series)
 
 ### Changed
 
+- Updated to idc-index 0.11.9 (IDC data version v23)
 - Reduced SKILL.md from 1,245 to 825 lines by extracting secondary content to reference files
 - Core Capabilities sections remain inline to ensure correct API pattern usage
 - Refactored detailed SM/ANN content from SKILL.md into `references/digital_pathology_guide.md`, keeping brief summaries with pointers in main skill
-- Updated to idc-index 0.11.8 (IDC data version v23)
 - Made IDC version (v23) more prominent in SKILL.md with verification guidance to prevent responses using older versions
 - Clarified distinction between `index_tables_guide.md` (structure/access) and `sql_patterns.md` (query examples)
 
