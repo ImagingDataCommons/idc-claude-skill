@@ -2,78 +2,23 @@
 
 **Tested with:** idc-index 0.11.8 (IDC data version v23)
 
-This guide covers advanced patterns for working with IDC index tables: JOIN queries, programmatic schema discovery, and direct DataFrame access. For the overview of available tables and their purposes, see the "Index Tables" section in the main SKILL.md.
+This guide covers the structure and access patterns for IDC index tables: programmatic schema discovery, DataFrame access, and join column references. For the overview of available tables and their purposes, see the "Index Tables" section in the main SKILL.md.
 
 **Complete index table documentation:** https://idc-index.readthedocs.io/en/latest/indices_reference.html
 
 ## When to Use This Guide
 
 Load this guide when you need to:
-- Write complex SQL JOIN queries across multiple index tables
 - Discover table schemas and column types programmatically
 - Access index tables as pandas DataFrames (not via SQL)
-- Understand key columns for filtering and joining
+- Understand key columns and join relationships between tables
+
+For SQL query examples (filter discovery, finding annotations, size estimation), see `references/sql_patterns.md`.
 
 ## Prerequisites
 
 ```bash
 pip install --upgrade idc-index
-```
-
-## Example Joins
-
-The index tables can be joined to combine metadata. Always fetch the required indices first using `client.fetch_index()`.
-
-```python
-from idc_index import IDCClient
-client = IDCClient()
-
-# Join index with collections_index to get cancer types
-client.fetch_index("collections_index")
-result = client.sql_query("""
-    SELECT i.SeriesInstanceUID, i.Modality, c.CancerTypes, c.TumorLocations
-    FROM index i
-    JOIN collections_index c ON i.collection_id = c.collection_id
-    WHERE i.Modality = 'MR'
-    LIMIT 10
-""")
-
-# Join index with sm_index for slide microscopy details
-client.fetch_index("sm_index")
-result = client.sql_query("""
-    SELECT i.collection_id, i.PatientID, s.ObjectiveLensPower, s.min_PixelSpacing_2sf
-    FROM index i
-    JOIN sm_index s ON i.SeriesInstanceUID = s.SeriesInstanceUID
-    LIMIT 10
-""")
-
-# Join ann_group_index with ann_index and index for annotation details
-client.fetch_index("ann_index")
-client.fetch_index("ann_group_index")
-result = client.sql_query("""
-    SELECT g.AnnotationGroupLabel, g.GraphicType, g.NumberOfAnnotations,
-           i.collection_id, a.referenced_SeriesInstanceUID as source_series
-    FROM ann_group_index g
-    JOIN ann_index a ON g.SeriesInstanceUID = a.SeriesInstanceUID
-    JOIN index i ON a.SeriesInstanceUID = i.SeriesInstanceUID
-    LIMIT 10
-""")
-
-# Join seg_index with index to find segmentations and their source images
-client.fetch_index("seg_index")
-result = client.sql_query("""
-    SELECT
-        s.SeriesInstanceUID as seg_series,
-        s.AlgorithmName,
-        s.total_segments,
-        src.collection_id,
-        src.Modality as source_modality,
-        src.BodyPartExamined
-    FROM seg_index s
-    JOIN index src ON s.segmented_SeriesInstanceUID = src.SeriesInstanceUID
-    WHERE s.AlgorithmType = 'AUTOMATIC'
-    LIMIT 10
-""")
 ```
 
 ## Accessing Index Tables
@@ -167,21 +112,22 @@ Most common columns in the primary `index` table (use `indices_overview` for com
 
 **DICOM = Yes**: Column value extracted from the DICOM attribute with the same name. Refer to the [DICOM standard](https://dicom.nema.org/medical/dicom/current/output/chtml/part06/chapter_6.html) for numeric tag mappings. Use standard DICOM knowledge for expected values and formats.
 
-## Common Join Patterns
+## Join Column Reference
 
-| Join | Purpose |
-|------|---------|
-| `index JOIN collections_index ON collection_id` | Get collection metadata (cancer types, locations) |
-| `index JOIN sm_index ON SeriesInstanceUID` | Get slide microscopy details |
-| `seg_index JOIN index ON segmented_SeriesInstanceUID = SeriesInstanceUID` | Find source images for segmentations |
-| `ann_index JOIN index ON SeriesInstanceUID` | Get annotation context |
-| `ann_group_index JOIN ann_index ON SeriesInstanceUID` | Get annotation group details |
+Use this table to identify join columns between index tables. Always call `client.fetch_index("table_name")` before using a table in SQL.
+
+| Table A | Table B | Join Condition |
+|---------|---------|----------------|
+| `index` | `collections_index` | `index.collection_id = collections_index.collection_id` |
+| `index` | `sm_index` | `index.SeriesInstanceUID = sm_index.SeriesInstanceUID` |
+| `index` | `seg_index` | `index.SeriesInstanceUID = seg_index.segmented_SeriesInstanceUID` |
+| `index` | `ann_index` | `index.SeriesInstanceUID = ann_index.SeriesInstanceUID` |
+| `ann_index` | `ann_group_index` | `ann_index.SeriesInstanceUID = ann_group_index.SeriesInstanceUID` |
+| `index` | `clinical_index` | `index.collection_id = clinical_index.collection_id` (then filter by patient) |
+
+For complete query examples using these joins, see `references/sql_patterns.md`.
 
 ## Troubleshooting
-
-**Issue:** Query returns empty results when joining tables
-- **Cause:** Target index not fetched before query
-- **Solution:** Always call `client.fetch_index("table_name")` before using a table in SQL
 
 **Issue:** Column not found in table
 - **Cause:** Column name misspelled or doesn't exist in that table
@@ -194,7 +140,6 @@ Most common columns in the primary `index` table (use `indices_overview` for com
 ## Resources
 
 - Complete index table documentation: https://idc-index.readthedocs.io/en/latest/indices_reference.html
-- Main SKILL.md for available tables overview
-- `references/clinical_data_guide.md` for clinical data joins
-- `references/digital_pathology_guide.md` for pathology-specific indices (sm_index, ann_index, seg_index)
-- `references/bigquery_guide.md` for advanced queries requiring full DICOM metadata
+- `references/sql_patterns.md` for query examples using these tables
+- `references/clinical_data_guide.md` for clinical data workflows
+- `references/digital_pathology_guide.md` for pathology-specific indices

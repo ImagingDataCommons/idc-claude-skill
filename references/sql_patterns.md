@@ -13,6 +13,8 @@ Load this guide when you need quick-reference SQL patterns for:
 - Estimating download sizes before download
 - Linking imaging data to clinical data
 
+For table schemas, DataFrame access, and join column references, see `references/index_tables_guide.md`.
+
 ## Prerequisites
 
 ```bash
@@ -199,8 +201,7 @@ See `references/clinical_data_guide.md` for complete patterns including value ma
 
 ## Resources
 
-- Main SKILL.md for Core Capabilities with detailed context
+- `references/index_tables_guide.md` for table schemas, DataFrame access, and join column references
 - `references/clinical_data_guide.md` for clinical data patterns and value mapping
 - `references/digital_pathology_guide.md` for pathology-specific queries
-- `references/index_tables_guide.md` for join patterns and schema discovery
 - `references/bigquery_guide.md` for advanced queries requiring full DICOM metadata
