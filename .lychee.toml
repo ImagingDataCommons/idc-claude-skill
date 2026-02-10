@@ -1,0 +1,12 @@
+# Lychee link checker configuration
+# https://lychee.cli.rs/
+
+# URLs that block automated requests or require authentication
+exclude = [
+    # DOI resolvers return 403 for bots but work for browsers
+    "^https://doi\\.org/",
+    # Sites requiring authentication
+    "^https://claude\\.ai/",
+    # GitHub issue creation requires login
+    "^https://github\\.com/.*/issues/new",
+]
