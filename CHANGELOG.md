@@ -17,12 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Documentation for new `ann_index` and `ann_group_index` tables (Microscopy Bulk Simple Annotations)
 - Example queries for annotation series and annotation group metadata
 - Explanation of downloaded DICOM file naming convention (`<crdc_instance_uuid>.dcm`)
+- New reference guides extracted from SKILL.md:
+  - `references/index_tables_guide.md` - Table schemas, DataFrame access, join column reference
+  - `references/sql_patterns.md` - Quick-reference SQL patterns for common queries
+  - `references/use_cases.md` - End-to-end workflow examples
+- Quick Navigation section in SKILL.md with decision triggers for when to load each reference
+- `idc-data-version` field in frontmatter metadata
 
 ### Changed
 
+- Reduced SKILL.md from 1,245 to 825 lines by extracting secondary content to reference files
+- Core Capabilities sections remain inline to ensure correct API pattern usage
 - Refactored detailed SM/ANN content from SKILL.md into `references/digital_pathology_guide.md`, keeping brief summaries with pointers in main skill
 - Updated to idc-index 0.11.8 (IDC data version v23)
 - Made IDC version (v23) more prominent in SKILL.md with verification guidance to prevent responses using older versions
+- Clarified distinction between `index_tables_guide.md` (structure/access) and `sql_patterns.md` (query examples)
 
 ## [1.2.0] - 2026-02-04
 

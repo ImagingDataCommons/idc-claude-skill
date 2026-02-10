@@ -6,6 +6,7 @@ metadata:
     version: 1.2.0
     skill-author: Andrey Fedorov, @fedorov
     idc-index: "0.11.8"
+    idc-data-version: "v23"
     repository: https://github.com/ImagingDataCommons/idc-claude-skill
 ---
 
@@ -57,6 +58,30 @@ print(stats)
 - Downloading DICOM data from IDC
 - Checking data licenses before use in research or commercial applications
 - Visualizing medical images in a browser without local DICOM viewer software
+
+## Quick Navigation
+
+**Core Sections (inline):**
+- IDC Data Model - Collection and analysis result hierarchy
+- Index Tables - Available tables and joining patterns
+- Installation - Package setup and version verification
+- Core Capabilities - Essential API patterns (query, download, visualize, license, citations, batch)
+- Best Practices - Usage guidelines
+- Troubleshooting - Common issues and solutions
+
+**Reference Guides (load on demand):**
+
+| Guide | When to Load |
+|-------|--------------|
+| `index_tables_guide.md` | Complex JOINs, schema discovery, DataFrame access |
+| `use_cases.md` | End-to-end workflow examples (training datasets, batch downloads) |
+| `sql_patterns.md` | Quick SQL patterns for filter discovery, annotations, size estimation |
+| `clinical_data_guide.md` | Clinical/tabular data, imaging+clinical joins, value mapping |
+| `cloud_storage_guide.md` | Direct S3/GCS access, versioning, UUID mapping |
+| `dicomweb_guide.md` | DICOMweb endpoints, PACS integration |
+| `digital_pathology_guide.md` | Slide microscopy (SM), annotations (ANN), pathology workflows |
+| `bigquery_guide.md` | Full DICOM metadata, private elements (requires GCP) |
+| `cli_guide.md` | Command-line tools (`idc download`, manifest files) |
 
 ## IDC Data Model
 
@@ -119,147 +144,7 @@ The `idc-index` package provides multiple metadata index tables, accessible via 
 
 **Note:** `Subjects`, `Updated`, and `Description` appear in multiple tables but have different meanings (counts vs identifiers, different update contexts).
 
-**Example joins:**
-```python
-from idc_index import IDCClient
-client = IDCClient()
-
-# Join index with collections_index to get cancer types
-client.fetch_index("collections_index")
-result = client.sql_query("""
-    SELECT i.SeriesInstanceUID, i.Modality, c.CancerTypes, c.TumorLocations
-    FROM index i
-    JOIN collections_index c ON i.collection_id = c.collection_id
-    WHERE i.Modality = 'MR'
-    LIMIT 10
-""")
-
-# Join index with sm_index for slide microscopy details
-client.fetch_index("sm_index")
-result = client.sql_query("""
-    SELECT i.collection_id, i.PatientID, s.ObjectiveLensPower, s.min_PixelSpacing_2sf
-    FROM index i
-    JOIN sm_index s ON i.SeriesInstanceUID = s.SeriesInstanceUID
-    LIMIT 10
-""")
-
-# Join ann_group_index with ann_index and index for annotation details
-client.fetch_index("ann_index")
-client.fetch_index("ann_group_index")
-result = client.sql_query("""
-    SELECT g.AnnotationGroupLabel, g.GraphicType, g.NumberOfAnnotations,
-           i.collection_id, a.referenced_SeriesInstanceUID as source_series
-    FROM ann_group_index g
-    JOIN ann_index a ON g.SeriesInstanceUID = a.SeriesInstanceUID
-    JOIN index i ON a.SeriesInstanceUID = i.SeriesInstanceUID
-    LIMIT 10
-""")
-
-# Join seg_index with index to find segmentations and their source images
-client.fetch_index("seg_index")
-result = client.sql_query("""
-    SELECT
-        s.SeriesInstanceUID as seg_series,
-        s.AlgorithmName,
-        s.total_segments,
-        src.collection_id,
-        src.Modality as source_modality,
-        src.BodyPartExamined
-    FROM seg_index s
-    JOIN index src ON s.segmented_SeriesInstanceUID = src.SeriesInstanceUID
-    WHERE s.AlgorithmType = 'AUTOMATIC'
-    LIMIT 10
-""")
-```
-
-### Accessing Index Tables
-
-**Via SQL (recommended for filtering/aggregation):**
-```python
-from idc_index import IDCClient
-client = IDCClient()
-
-# Query the primary index (always available)
-results = client.sql_query("SELECT * FROM index WHERE Modality = 'CT' LIMIT 10")
-
-# Fetch and query additional indices
-client.fetch_index("collections_index")
-collections = client.sql_query("SELECT collection_id, CancerTypes, TumorLocations FROM collections_index")
-
-client.fetch_index("analysis_results_index")
-analysis = client.sql_query("SELECT * FROM analysis_results_index LIMIT 5")
-```
-
-**As pandas DataFrames (direct access):**
-```python
-# Primary index (always available after client initialization)
-df = client.index
-
-# Fetch and access on-demand indices
-client.fetch_index("sm_index")
-sm_df = client.sm_index
-```
-
-### Discovering Table Schemas (Essential for Query Writing)
-
-The `indices_overview` dictionary contains complete schema information for all tables. **Always consult this when writing queries or exploring data structure.**
-
-**DICOM attribute mapping:** Many columns are populated directly from DICOM attributes in the source files. The column description in the schema indicates when a column corresponds to a DICOM attribute (e.g., "DICOM Modality attribute" or references a DICOM tag). This allows leveraging DICOM knowledge when querying — standard DICOM attribute names like `PatientID`, `StudyInstanceUID`, `Modality`, `BodyPartExamined` work as expected.
-
-```python
-from idc_index import IDCClient
-client = IDCClient()
-
-# List all available indices with descriptions
-for name, info in client.indices_overview.items():
-    print(f"\n{name}:")
-    print(f"  Installed: {info['installed']}")
-    print(f"  Description: {info['description']}")
-
-# Get complete schema for a specific index (columns, types, descriptions)
-schema = client.indices_overview["index"]["schema"]
-print(f"\nTable: {schema['table_description']}")
-print("\nColumns:")
-for col in schema['columns']:
-    desc = col.get('description', 'No description')
-    # Description indicates if column is from DICOM attribute
-    print(f"  {col['name']} ({col['type']}): {desc}")
-
-# Find columns that are DICOM attributes (check description for "DICOM" reference)
-dicom_cols = [c['name'] for c in schema['columns'] if 'DICOM' in c.get('description', '').upper()]
-print(f"\nDICOM-sourced columns: {dicom_cols}")
-```
-
-**Alternative: use `get_index_schema()` method:**
-```python
-schema = client.get_index_schema("index")
-# Returns same schema dict: {'table_description': ..., 'columns': [...]}
-```
-
-### Key Columns in Primary `index` Table
-
-Most common columns for queries (use `indices_overview` for complete list and descriptions):
-
-| Column | Type | DICOM | Description |
-|--------|------|-------|-------------|
-| `collection_id` | STRING | No | IDC collection identifier |
-| `analysis_result_id` | STRING | No | If applicable, indicates what analysis results collection given series is part of |
-| `source_DOI` | STRING | No | DOI linking to dataset details; use for learning more about the content and for attribution (see citations below) |
-| `PatientID` | STRING | Yes | Patient identifier |
-| `StudyInstanceUID` | STRING | Yes | DICOM Study UID |
-| `SeriesInstanceUID` | STRING | Yes | DICOM Series UID — use for downloads/viewing |
-| `Modality` | STRING | Yes | Imaging modality (CT, MR, PT, SM, SEG, ANN, RTSTRUCT, etc.) |
-| `BodyPartExamined` | STRING | Yes | Anatomical region |
-| `SeriesDescription` | STRING | Yes | Description of the series |
-| `Manufacturer` | STRING | Yes | Equipment manufacturer |
-| `StudyDate` | STRING | Yes | Date study was performed |
-| `PatientSex` | STRING | Yes | Patient sex |
-| `PatientAge` | STRING | Yes | Patient age at time of study |
-| `license_short_name` | STRING | No | License type (CC BY 4.0, CC BY-NC 4.0, etc.) |
-| `series_size_MB` | FLOAT | No | Size of series in megabytes |
-| `instanceCount` | INTEGER | No | Number of DICOM instances in series |
-
-**DICOM = Yes**: Column value extracted from the DICOM attribute with the same name. Refer to the [DICOM standard](https://dicom.nema.org/medical/dicom/current/output/chtml/part06/chapter_6.html) for numeric tag mappings. Use standard DICOM knowledge for expected values and formats.
+For detailed join examples, schema discovery patterns, key columns reference, and DataFrame access, see `references/index_tables_guide.md`.
 
 ### Clinical Data Access
 
@@ -823,163 +708,11 @@ sitk.WriteImage(smoothed, "processed_volume.nii.gz")
 
 ## Common Use Cases
 
-### Use Case 1: Find and Download Lung CT Scans for Deep Learning
-
-**Objective:** Build training dataset of lung CT scans from NLST collection
-
-**Steps:**
-```python
-from idc_index import IDCClient
-
-client = IDCClient()
-
-# 1. Query for lung CT scans with specific criteria
-query = """
-SELECT
-  PatientID,
-  SeriesInstanceUID,
-  SeriesDescription
-FROM index
-WHERE collection_id = 'nlst'
-  AND Modality = 'CT'
-  AND BodyPartExamined = 'CHEST'
-  AND license_short_name = 'CC BY 4.0'
-ORDER BY PatientID
-LIMIT 100
-"""
-
-results = client.sql_query(query)
-print(f"Found {len(results)} series from {results['PatientID'].nunique()} patients")
-
-# 2. Download data organized by patient
-client.download_from_selection(
-    seriesInstanceUID=list(results['SeriesInstanceUID'].values),
-    downloadDir="./training_data",
-    dirTemplate="%collection_id/%PatientID/%SeriesInstanceUID"
-)
-
-# 3. Save manifest for reproducibility
-results.to_csv('training_manifest.csv', index=False)
-```
-
-### Use Case 2: Query Brain MRI by Manufacturer for Quality Study
-
-**Objective:** Compare image quality across different MRI scanner manufacturers
-
-**Steps:**
-```python
-from idc_index import IDCClient
-import pandas as pd
-
-client = IDCClient()
-
-# Query for brain MRI grouped by manufacturer
-query = """
-SELECT
-  Manufacturer,
-  ManufacturerModelName,
-  COUNT(DISTINCT SeriesInstanceUID) as num_series,
-  COUNT(DISTINCT PatientID) as num_patients
-FROM index
-WHERE Modality = 'MR'
-  AND BodyPartExamined LIKE '%BRAIN%'
-GROUP BY Manufacturer, ManufacturerModelName
-HAVING num_series >= 10
-ORDER BY num_series DESC
-"""
-
-manufacturers = client.sql_query(query)
-print(manufacturers)
-
-# Download sample from each manufacturer for comparison
-for _, row in manufacturers.head(3).iterrows():
-    mfr = row['Manufacturer']
-    model = row['ManufacturerModelName']
-
-    query = f"""
-    SELECT SeriesInstanceUID
-    FROM index
-    WHERE Manufacturer = '{mfr}'
-      AND ManufacturerModelName = '{model}'
-      AND Modality = 'MR'
-      AND BodyPartExamined LIKE '%BRAIN%'
-    LIMIT 5
-    """
-
-    series = client.sql_query(query)
-    client.download_from_selection(
-        seriesInstanceUID=list(series['SeriesInstanceUID'].values),
-        downloadDir=f"./quality_study/{mfr.replace(' ', '_')}"
-    )
-```
-
-### Use Case 3: Visualize Series Without Downloading
-
-**Objective:** Preview imaging data before committing to download
-
-```python
-from idc_index import IDCClient
-import webbrowser
-
-client = IDCClient()
-
-series_list = client.sql_query("""
-    SELECT SeriesInstanceUID, PatientID, SeriesDescription
-    FROM index
-    WHERE collection_id = 'acrin_nsclc_fdg_pet' AND Modality = 'PT'
-    LIMIT 10
-""")
-
-# Preview each in browser
-for _, row in series_list.iterrows():
-    viewer_url = client.get_viewer_URL(seriesInstanceUID=row['SeriesInstanceUID'])
-    print(f"Patient {row['PatientID']}: {row['SeriesDescription']}")
-    print(f"  View at: {viewer_url}")
-    # webbrowser.open(viewer_url)  # Uncomment to open automatically
-```
-
-For additional visualization options, see the [IDC Portal getting started guide](https://learn.canceridc.dev/portal/getting-started) or [SlicerIDCBrowser](https://github.com/ImagingDataCommons/SlicerIDCBrowser) for 3D Slicer integration.
-
-### Use Case 4: License-Aware Batch Download for Commercial Use
-
-**Objective:** Download only CC-BY licensed data suitable for commercial applications
-
-**Steps:**
-```python
-from idc_index import IDCClient
-
-client = IDCClient()
-
-# Query ONLY for CC BY licensed data (allows commercial use with attribution)
-query = """
-SELECT
-  SeriesInstanceUID,
-  collection_id,
-  PatientID,
-  Modality
-FROM index
-WHERE license_short_name LIKE 'CC BY%'
-  AND license_short_name NOT LIKE '%NC%'
-  AND Modality IN ('CT', 'MR')
-  AND BodyPartExamined IN ('CHEST', 'BRAIN', 'ABDOMEN')
-LIMIT 200
-"""
-
-cc_by_data = client.sql_query(query)
-
-print(f"Found {len(cc_by_data)} CC BY licensed series")
-print(f"Collections: {cc_by_data['collection_id'].unique()}")
-
-# Download with license verification
-client.download_from_selection(
-    seriesInstanceUID=list(cc_by_data['SeriesInstanceUID'].values),
-    downloadDir="./commercial_dataset",
-    dirTemplate="%collection_id/%Modality/%PatientID/%SeriesInstanceUID"
-)
-
-# Save license information
-cc_by_data.to_csv('commercial_dataset_manifest_CC-BY_ONLY.csv', index=False)
-```
+See `references/use_cases.md` for complete end-to-end workflow examples including:
+- Building deep learning training datasets from lung CT scans
+- Comparing image quality across scanner manufacturers
+- Previewing data in browser before downloading
+- License-aware batch downloads for commercial use
 
 ## Best Practices
 
@@ -1031,163 +764,14 @@ cc_by_data.to_csv('commercial_dataset_manifest_CC-BY_ONLY.csv', index=False)
 
 ## Common SQL Query Patterns
 
-Quick reference for common queries. For detailed examples with context, see the Core Capabilities section above.
+See `references/sql_patterns.md` for quick-reference SQL patterns including:
+- Filter value discovery (modalities, body parts, manufacturers)
+- Annotation and segmentation queries (including seg_index, ann_index joins)
+- Slide microscopy queries (sm_index patterns)
+- Download size estimation
+- Clinical data linking
 
-### Discover available filter values
-```python
-# What modalities exist?
-client.sql_query("SELECT DISTINCT Modality FROM index")
-
-# What body parts for a specific modality?
-client.sql_query("""
-    SELECT DISTINCT BodyPartExamined, COUNT(*) as n
-    FROM index WHERE Modality = 'CT' AND BodyPartExamined IS NOT NULL
-    GROUP BY BodyPartExamined ORDER BY n DESC
-""")
-
-# What manufacturers for MR?
-client.sql_query("""
-    SELECT DISTINCT Manufacturer, COUNT(*) as n
-    FROM index WHERE Modality = 'MR'
-    GROUP BY Manufacturer ORDER BY n DESC
-""")
-```
-
-### Find annotations and segmentations
-
-**Note:** Not all image-derived objects belong to analysis result collections. Some annotations are deposited alongside original images. Use DICOM Modality or SOPClassUID to find all derived objects regardless of collection type.
-
-```python
-# Find ALL segmentations and structure sets by DICOM Modality
-# SEG = DICOM Segmentation, RTSTRUCT = Radiotherapy Structure Set
-client.sql_query("""
-    SELECT collection_id, Modality, COUNT(*) as series_count
-    FROM index
-    WHERE Modality IN ('SEG', 'RTSTRUCT')
-    GROUP BY collection_id, Modality
-    ORDER BY series_count DESC
-""")
-
-# Find segmentations for a specific collection (includes non-analysis-result items)
-client.sql_query("""
-    SELECT SeriesInstanceUID, SeriesDescription, analysis_result_id
-    FROM index
-    WHERE collection_id = 'tcga_luad' AND Modality = 'SEG'
-""")
-
-# List analysis result collections (curated derived datasets)
-client.fetch_index("analysis_results_index")
-client.sql_query("""
-    SELECT analysis_result_id, analysis_result_title, Collections, Modalities
-    FROM analysis_results_index
-""")
-
-# Find analysis results for a specific source collection
-client.sql_query("""
-    SELECT analysis_result_id, analysis_result_title
-    FROM analysis_results_index
-    WHERE Collections LIKE '%tcga_luad%'
-""")
-
-# Use seg_index for detailed DICOM Segmentation metadata
-client.fetch_index("seg_index")
-
-# Get segmentation statistics by algorithm
-client.sql_query("""
-    SELECT AlgorithmName, AlgorithmType, COUNT(*) as seg_count
-    FROM seg_index
-    WHERE AlgorithmName IS NOT NULL
-    GROUP BY AlgorithmName, AlgorithmType
-    ORDER BY seg_count DESC
-    LIMIT 10
-""")
-
-# Find segmentations for specific source images (e.g., chest CT)
-client.sql_query("""
-    SELECT
-        s.SeriesInstanceUID as seg_series,
-        s.AlgorithmName,
-        s.total_segments,
-        s.segmented_SeriesInstanceUID as source_series
-    FROM seg_index s
-    JOIN index src ON s.segmented_SeriesInstanceUID = src.SeriesInstanceUID
-    WHERE src.Modality = 'CT' AND src.BodyPartExamined = 'CHEST'
-    LIMIT 10
-""")
-
-# Find TotalSegmentator results with source image context
-client.sql_query("""
-    SELECT
-        seg_info.collection_id,
-        COUNT(DISTINCT s.SeriesInstanceUID) as seg_count,
-        SUM(s.total_segments) as total_segments
-    FROM seg_index s
-    JOIN index seg_info ON s.SeriesInstanceUID = seg_info.SeriesInstanceUID
-    WHERE s.AlgorithmName LIKE '%TotalSegmentator%'
-    GROUP BY seg_info.collection_id
-    ORDER BY seg_count DESC
-""")
-
-# Use ann_index and ann_group_index for Microscopy Bulk Simple Annotations
-# ann_group_index has AnnotationGroupLabel, GraphicType, NumberOfAnnotations, AlgorithmName
-client.fetch_index("ann_index")
-client.fetch_index("ann_group_index")
-client.sql_query("""
-    SELECT g.AnnotationGroupLabel, g.GraphicType, g.NumberOfAnnotations, i.collection_id
-    FROM ann_group_index g
-    JOIN ann_index a ON g.SeriesInstanceUID = a.SeriesInstanceUID
-    JOIN index i ON a.SeriesInstanceUID = i.SeriesInstanceUID
-    WHERE g.AlgorithmName IS NOT NULL
-    LIMIT 10
-""")
-# See references/digital_pathology_guide.md for AnnotationGroupLabel filtering, SM+ANN joins, and more
-```
-
-### Query slide microscopy and annotation data
-
-Use `sm_index` for slide microscopy metadata and `ann_index`/`ann_group_index` for annotations on slides (DICOM ANN objects). Filter annotation groups by `AnnotationGroupLabel` to find annotations by name.
-
-```python
-client.fetch_index("sm_index")
-client.fetch_index("ann_index")
-client.fetch_index("ann_group_index")
-
-# Example: find annotation groups by label within a collection
-client.sql_query("""
-    SELECT g.AnnotationGroupLabel, g.GraphicType, g.NumberOfAnnotations
-    FROM ann_group_index g
-    JOIN index i ON g.SeriesInstanceUID = i.SeriesInstanceUID
-    WHERE i.collection_id = 'your_collection_id'
-      AND LOWER(g.AnnotationGroupLabel) LIKE '%keyword%'
-""")
-```
-
-See `references/digital_pathology_guide.md` for SM queries, ANN filtering patterns, SM+ANN cross-references, and join examples.
-
-### Estimate download size
-```python
-# Size for specific criteria
-client.sql_query("""
-    SELECT SUM(series_size_MB) as total_mb, COUNT(*) as series_count
-    FROM index
-    WHERE collection_id = 'nlst' AND Modality = 'CT'
-""")
-```
-
-### Link to clinical data
-```python
-client.fetch_index("clinical_index")
-
-# Find collections with clinical data and their tables
-client.sql_query("""
-    SELECT collection_id, table_name, COUNT(DISTINCT column_label) as columns
-    FROM clinical_index
-    GROUP BY collection_id, table_name
-    ORDER BY collection_id
-""")
-```
-
-See `references/clinical_data_guide.md` for complete patterns including value mapping and patient cohort selection.
+For segmentation and annotation details, also see `references/digital_pathology_guide.md`.
 
 ## Related Skills
 
@@ -1221,12 +805,8 @@ columns = [(c['name'], c['type'], c.get('description', '')) for c in schema['col
 
 ### Reference Documentation
 
-- **clinical_data_guide.md** - Clinical/tabular data navigation, value mapping, and joining with imaging data
-- **cloud_storage_guide.md** - Direct cloud bucket access (S3/GCS), file organization, CRDC UUIDs, versioning, and reproducibility
-- **cli_guide.md** - Complete idc-index command-line interface reference (`idc download`, `idc download-from-manifest`, `idc download-from-selection`)
-- **digital_pathology_guide.md** - Slide microscopy and annotation (ANN) query patterns, index schemas, and pathology tool recommendations
-- **bigquery_guide.md** - Advanced BigQuery usage guide for complex metadata queries
-- **dicomweb_guide.md** - DICOMweb endpoint URLs, code examples, and Google Healthcare API implementation details
+See the Quick Navigation section at the top for the full list of reference guides with decision triggers.
+
 - **[indices_reference](https://idc-index.readthedocs.io/en/latest/indices_reference.html)** - External documentation for index tables (may be ahead of the installed version)
 
 ### External Links
