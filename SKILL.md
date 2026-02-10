@@ -6,6 +6,7 @@ metadata:
     version: 1.2.0
     skill-author: Andrey Fedorov, @fedorov
     idc-index: "0.11.8"
+    idc-data-version: "v23"
     repository: https://github.com/ImagingDataCommons/idc-claude-skill
 ---
 
