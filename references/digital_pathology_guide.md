@@ -236,9 +236,19 @@ result = client.sql_query("""
 """)
 ```
 
-## Related Skills
+## Related Tools
 
-The following tools complement IDC digital pathology workflows:
+The following tools work with DICOM format for digital pathology workflows:
 
-- **histolab** - Lightweight tile extraction and preprocessing for whole slide images. Use for basic slide processing, tissue detection, and dataset preparation from IDC slide microscopy data.
-- **pathml** - Full-featured computational pathology toolkit. Use for advanced WSI analysis including multiplexed imaging, nucleus segmentation, and ML model training on pathology data downloaded from IDC.
+**Python Libraries:**
+- [highdicom](https://github.com/ImagingDataCommons/highdicom) - High-level DICOM abstractions for Python. Create and read DICOM Segmentations (SEG), Structured Reports (SR), and parametric maps for pathology and radiology. Developed by IDC.
+- [wsidicom](https://github.com/imi-bigpicture/wsidicom) - Python package for reading DICOM WSI datasets. Parses metadata into easy-to-use dataclasses for whole slide image analysis.
+- [TIA-Toolbox](https://github.com/TissueImageAnalytics/tiatoolbox) - End-to-end computational pathology library with DICOM support via `DICOMWSIReader`. Provides tile extraction, feature extraction, and pretrained deep learning models.
+- [EZ-WSI-DICOMweb](https://github.com/GoogleCloudPlatform/EZ-WSI-DICOMweb) - Extract image patches from DICOM whole slide images via DICOMweb. Designed for AI/ML workflows with cloud DICOM stores.
+
+**Viewers:**
+- [Slim](https://github.com/ImagingDataCommons/slim) - Web-based DICOM slide microscopy viewer and annotation tool. Supports brightfield and multiplexed immunofluorescence imaging via DICOMweb. Developed by IDC.
+- [QuPath](https://qupath.github.io/) - Cross-platform open source software for whole slide image analysis. Supports DICOM WSI via Bio-Formats and OpenSlide (v0.4.0+).
+
+**Conversion:**
+- [dicom_wsi](https://github.com/Steven-N-Hart/dicom_wsi) - Python implementation for converting proprietary WSI formats to DICOM-compliant files.
