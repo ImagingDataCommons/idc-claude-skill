@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-02-11
+
+### Added
+
+- Automatic idc-index package version check with upgrade prompt before any queries
+- Version check compares installed version against `metadata.idc-index` in frontmatter and triggers `pip install --upgrade` when outdated
+
+### Fixed
+
+- Prevents "table not found" errors when using newer index tables (e.g., `contrast_index`) with older idc-index versions
+
 ## [1.3.0] - 2026-02-10
 
 ### Added
