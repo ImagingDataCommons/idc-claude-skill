@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- New "Identifying Tumor vs Normal Slides" section in digital pathology guide with two approaches:
+  - Structured DICOM tissue type via `primaryAnatomicStructureModifier_CodeMeaning` (works across all SM collections)
+  - TCGA barcode parsing via `ContainerIdentifier` (TCGA collections only, catches metastatic edge cases)
+- TCGA-BRCA worked examples showing tumor vs normal slide counts
+- Documentation references to GDC TCGA barcode format and sample type codes
+- Specimen preparation query examples: filtering by staining (H&E), embedding medium (FFPE vs frozen), and fixative, with note about array column syntax (`array_to_string`, `list_contains`)
+- "Finding Pre-Computed Analysis Results" section: discovering derived datasets (nuclei segmentations, TIL maps) via `analysis_results_index`, with example joining annotations back to source slides
+- Note about per-annotation measurements in DICOM ANN objects (extractable via highdicom after download), with link to [microscopy_dicom_ann_intro](https://github.com/ImagingDataCommons/IDC-Tutorials/blob/master/notebooks/pathomics/microscopy_dicom_ann_intro.ipynb) tutorial
+
+### Changed
+
+- Updated to idc-index 0.11.10 (adds `ContainerIdentifier` column to `sm_index`)
+- Updated `sm_index` table description to reflect newly available columns (container/slide ID, tissue type, anatomic structure, diagnosis)
+
 ## [1.3.1] - 2026-02-11
 
 ### Added
