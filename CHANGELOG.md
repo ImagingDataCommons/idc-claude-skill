@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `rtstruct_index` table documentation: RT Structure Set metadata (total ROIs, ROI names, generation algorithms, interpreted types, referenced image series UID); join via `SeriesInstanceUID`
 - New reference guide `references/parquet_access_guide.md`: direct DuckDB queries against public GCS Parquet files without installing idc-index; URL pattern, available files, and query examples for main index, `volume_geometry_index`, and `rtstruct_index`
 - SQL patterns for `volume_geometry_index` and `rtstruct_index` in `references/sql_patterns.md`
+- Detailed documentation for BigQuery-only derived tables in `references/bigquery_guide.md`:
+  - `segmentations`: per-segment anatomy with full schema, column descriptions, and queries for discovering structures, filtering by coded concept, and linking to SR measurements; note on gap vs `seg_index` in idc-index
+  - `quantitative_measurements`: radiomics and clinical numeric measurements from DICOM SR TID1500 (volume, diameter, shape descriptors, texture, intensity statistics); full schema with column descriptions and query examples
+  - `qualitative_measurements`: coded assessments from DICOM SR TID1500 (malignancy rating, calcification, texture, margin); full schema with column descriptions and query examples
+  - `measurement_groups`: parent grouping table for SR measurements
+  - Combined example joining all three derived tables for LIDC-IDRI nodule analysis (malignancy + volume + diameter)
+- SKILL.md section 7 now explicitly lists per-segment anatomy search, quantitative SR measurements, and qualitative SR measurements as BigQuery-only use cases with no idc-index equivalent
 
 ### Changed
 
