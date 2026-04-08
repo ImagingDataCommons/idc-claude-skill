@@ -29,3 +29,4 @@ jobs:
             --config .lychee.toml
             '**/*.md'
           fail: true
+          debug: true

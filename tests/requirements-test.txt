@@ -1,0 +1,4 @@
+idc-index==0.11.14
+pandas
+pytest
+pytest-timeout

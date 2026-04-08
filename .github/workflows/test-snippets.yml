@@ -1,0 +1,42 @@
+name: Test Code Snippets
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'SKILL.md'
+      - 'references/**'
+      - 'tests/**'
+      - '.github/workflows/test-snippets.yml'
+  pull_request:
+    paths:
+      - 'SKILL.md'
+      - 'references/**'
+      - 'tests/**'
+      - '.github/workflows/test-snippets.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache idc-index data
+        uses: actions/cache@v4
+        with:
+          path: ~/.idc
+          key: idc-index-0.11.14
+
+      - name: Install test dependencies
+        run: pip install -r tests/requirements-test.txt
+
+      - name: Run snippet tests
+        run: pytest tests/test_snippets.py -v --timeout=300
