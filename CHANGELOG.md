@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `volume_geometry_index` table documentation: 3D geometry validation for single-frame CT, MR, and PT series; boolean checks (orientation, spacing, dimensions, slice positions) and composite `regularly_spaced_3d_volume` flag; join via `SeriesInstanceUID`
+- `rtstruct_index` table documentation: RT Structure Set metadata (total ROIs, ROI names, generation algorithms, interpreted types, referenced image series UID); join via `SeriesInstanceUID`
+- New reference guide `references/parquet_access_guide.md`: direct DuckDB queries against public GCS Parquet files without installing idc-index; URL pattern, available files, and query examples for main index, `volume_geometry_index`, and `rtstruct_index`
+- SQL patterns for `volume_geometry_index` and `rtstruct_index` in `references/sql_patterns.md`
+
+### Changed
+
+- Updated to idc-index 0.11.14 (idc-index-data 23.10.1)
+- Added `SOPClassUID` and `TransferSyntaxUID` columns to Key Columns Reference in `references/index_tables_guide.md`
+- Added Direct Parquet Access entry to Data Access Options table and pointer in SKILL.md
+- Added `parquet_access_guide.md` to Quick Navigation table in SKILL.md
+
 ## [1.4.0] - 2026-03-04
 
 ### Added

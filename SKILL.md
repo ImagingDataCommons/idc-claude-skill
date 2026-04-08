@@ -5,7 +5,7 @@ license: This skill is provided under the MIT License. IDC data itself has indiv
 metadata:
     version: 1.4.0
     skill-author: Andrey Fedorov, @fedorov
-    idc-index: "0.11.10"
+    idc-index: "0.11.14"
     idc-data-version: "v23"
     repository: https://github.com/ImagingDataCommons/idc-claude-skill
 ---
@@ -25,7 +25,7 @@ Use the `idc-index` Python package to query and download public cancer imaging d
 ```python
 import idc_index
 
-REQUIRED_VERSION = "0.11.10"  # Must match metadata.idc-index in this file
+REQUIRED_VERSION = "0.11.14"  # Must match metadata.idc-index in this file
 installed = idc_index.__version__
 
 if installed < REQUIRED_VERSION:
@@ -97,6 +97,7 @@ print(stats)
 | `digital_pathology_guide.md` | Slide microscopy (SM), annotations (ANN), pathology workflows |
 | `bigquery_guide.md` | Full DICOM metadata, private elements (requires GCP) |
 | `cli_guide.md` | Command-line tools (`idc download`, manifest files) |
+| `parquet_access_guide.md` | Direct Parquet queries via GCS (no idc-index install needed) |
 
 ## IDC Data Model
 
@@ -138,6 +139,8 @@ The `idc-index` package provides multiple metadata index tables, accessible via 
 | `ann_index` | 1 row = 1 DICOM ANN series | fetch_index() | Microscopy Bulk Simple Annotations series metadata; references annotated image series |
 | `ann_group_index` | 1 row = 1 annotation group | fetch_index() | Detailed annotation group metadata: graphic type, annotation count, property codes, algorithm |
 | `contrast_index` | 1 row = 1 series with contrast info | fetch_index() | Contrast agent metadata: agent name, ingredient, administration route (CT, MR, PT, XA, RF) |
+| `volume_geometry_index` | 1 row = 1 CT/MR/PT series | fetch_index() | 3D volume geometry validation for single-frame CT, MR, and PT series; boolean checks for orientation, spacing, dimensions, and slice positions; composite `regularly_spaced_3d_volume` flag |
+| `rtstruct_index` | 1 row = 1 RTSTRUCT series | fetch_index() | RT Structure Set metadata: total ROI count, ROI names, generation algorithms, interpreted types, and the referenced image series UID |
 
 **Auto** = loaded automatically when `IDCClient()` is instantiated
 **fetch_index()** = requires `client.fetch_index("table_name")` to load
@@ -159,6 +162,8 @@ The `idc-index` package provides multiple metadata index tables, accessible via 
 | `SeriesInstanceUID` | index, seg_index, ann_index, ann_group_index, contrast_index | Link segmentation/annotation/contrast series to its index metadata |
 | `segmented_SeriesInstanceUID` | seg_index → index | Link segmentation to its source image series (join seg_index.segmented_SeriesInstanceUID = index.SeriesInstanceUID) |
 | `referenced_SeriesInstanceUID` | ann_index → index | Link annotation to its source image series (join ann_index.referenced_SeriesInstanceUID = index.SeriesInstanceUID) |
+| `SeriesInstanceUID` | index, volume_geometry_index | Link series to its 3D geometry validation result (join index.SeriesInstanceUID = volume_geometry_index.SeriesInstanceUID) |
+| `SeriesInstanceUID` / `referenced_SeriesInstanceUID` | index, rtstruct_index | Join RTSTRUCT series to its metadata (index.SeriesInstanceUID = rtstruct_index.SeriesInstanceUID); use rtstruct_index.referenced_SeriesInstanceUID to find the source image series |
 
 **Note:** `Subjects`, `Updated`, and `Description` appear in multiple tables but have different meanings (counts vs identifiers, different update contexts).
 
@@ -184,6 +189,7 @@ See `references/clinical_data_guide.md` for detailed workflows including value m
 | Method | Auth Required | Best For |
 |--------|---------------|----------|
 | `idc-index` | No | Key queries and downloads (recommended) |
+| Direct Parquet (GCS) | No | Quick queries without installing idc-index; always uses latest data |
 | IDC Portal | No | Interactive exploration, manual selection, browser-based download |
 | BigQuery | Yes (GCP account) | Complex queries, full DICOM metadata |
 | DICOMweb proxy | No | Tool integration via DICOMweb API |
@@ -214,6 +220,12 @@ IDC data is available via DICOMweb interface (Google Cloud Healthcare API implem
 
 See `references/dicomweb_guide.md` for endpoint URLs, code examples, supported operations, and implementation details.
 
+**Direct Parquet access**
+
+All idc-index metadata tables are published as Parquet files to a public GCS bucket (`idc-index-data-artifacts`) with unrestricted CORS. This enables DuckDB or pandas queries without installing idc-index, including cross-table joins and queries against `volume_geometry_index` and `rtstruct_index`.
+
+See `references/parquet_access_guide.md` for URL patterns, available files, and DuckDB query examples.
+
 ## Installation and Setup
 
 **Required (for basic access):**
@@ -229,7 +241,7 @@ print(client.get_idc_version())  # Should return "v23"
 ```
 If you see an older version, upgrade with: `pip install --upgrade idc-index`
 
-**Tested with:** idc-index 0.11.10 (IDC data version v23)
+**Tested with:** idc-index 0.11.14 (IDC data version v23)
 
 **Optional (for data analysis):**
 ```bash
