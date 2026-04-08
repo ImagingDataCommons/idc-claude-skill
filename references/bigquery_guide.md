@@ -334,14 +334,17 @@ LIMIT 20
 
 ```sql
 SELECT
-  qm.trackingIdentifier,
+  qm.measurementGroup_number,
+  qm.finding.CodeMeaning AS finding,
+  qm.findingSite.CodeMeaning AS finding_site,
+  qm.lateralityModifier.CodeMeaning AS laterality,
   qm.Quantity.CodeMeaning AS feature,
   ROUND(CAST(qm.Value AS FLOAT64), 3) AS value,
   qm.Units.CodeMeaning AS units
 FROM `bigquery-public-data.idc_current.quantitative_measurements` qm
 WHERE qm.PatientID = 'LIDC-IDRI-0001'
   AND qm.finding.CodeMeaning = 'Nodule'
-ORDER BY qm.trackingIdentifier, qm.Quantity.CodeMeaning
+ORDER BY qm.measurementGroup_number, qm.Quantity.CodeMeaning
 ```
 
 ---
