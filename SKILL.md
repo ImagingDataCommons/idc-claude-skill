@@ -661,6 +661,13 @@ See `references/bigquery_guide.md` for setup, table schemas, query patterns, pri
 
 Common specialized indices: `seg_index` (segmentations), `ann_index` / `ann_group_index` (microscopy annotations), `sm_index` (slide microscopy), `collections_index` (collection metadata). Only use BigQuery if you need private DICOM elements or attributes not in any index.
 
+**Use cases that require BigQuery (no idc-index equivalent):**
+- **Per-segment anatomy search** — `seg_index` gives series-level SEG metadata, but the BigQuery `segmentations` table exposes each segment individually with its DICOM coded structure name (e.g., find all SEG series containing a "Liver" or "Neoplasm" segment)
+- **Quantitative measurements from SR** — the `quantitative_measurements` BigQuery table contains pre-extracted radiomics features (volume, diameter, shape descriptors, texture, intensity statistics) from DICOM SR TID1500 objects; no idc-index equivalent
+- **Qualitative measurements from SR** — the `qualitative_measurements` BigQuery table contains coded assessments (malignancy rating, calcification, texture, margin) from DICOM SR TID1500; no idc-index equivalent
+
+See `references/bigquery_guide.md` for schemas, column descriptions, and query examples for these tables.
+
 ### 8. Tool Selection Guide
 
 | Task | Tool | Reference |
