@@ -2,20 +2,9 @@
 
 This document provides technical instructions for integrating the IDC Claude skill into your AI assistant environment.
 
-## Installation Sources
-
-This skill can be installed from two locations:
-
-1. **Standalone** (this repo): `git clone https://github.com/ImagingDataCommons/idc-claude-skill`
-   - Best for users who only need IDC functionality
-
-2. **Collection** ([K-Dense-AI/claude-scientific-skills](https://github.com/K-Dense-AI/claude-scientific-skills)):
-   - Best for users wanting multiple scientific skills in one place
-   - This repo is the source of truth; the collection receives periodic updates
-
 ## Claude.ai Web Interface
 
-### Option 1: Upload Repository as ZIP (Recommended)
+### Upload Repository as ZIP
 
 1. Download this repository as a ZIP file (Code → Download ZIP on GitHub)
 2. Start a new conversation at [claude.ai](https://claude.ai)
@@ -24,44 +13,26 @@ This skill can be installed from two locations:
 
 This gives Claude the complete skill with all documentation in one upload.
 
-### Option 2: Attach Individual Files
+### Settings > Capabilities
 
-Attach `SKILL.md` to your conversation. For advanced features, also attach:
-- `references/bigquery_guide.md` — For complex metadata queries
-- `references/dicomweb_guide.md` — For DICOMweb API integration
+To enable web browsing and allow Claude to access IDC resources directly, configure the Capabilities settings:
+
+1. Go to **Settings > Capabilities** in Claude.ai
+2. Enable the following options:
+   - **Web search** — allows Claude to look up live IDC data and documentation
+3. Under **Allowed domains**, add the following:
+   - `*.github.com`
+   - `*.githubusercontent.com`
+   - `*.googleapis.com`
+   - `storage.googleapis.com`
+
+These domains allow Claude to access the skill files from GitHub and IDC data from Google Cloud Storage.
 
 ## Claude Desktop Setup
 
-### Option 1: File Attachment (Simplest)
+Claude Desktop works the same as the Claude.ai web interface. Follow the [Claude.ai Web Interface](#claudeai-web-interface) instructions above to upload the ZIP and configure Settings > Capabilities.
 
-1. Download `SKILL.md` from this repository
-2. When starting a new conversation in Claude Desktop, click the attachment icon and select `SKILL.md`
-3. Claude will have access to IDC knowledge for that conversation
-
-**Note:** For advanced features (BigQuery, DICOMweb), also attach the relevant reference guides from the `references/` folder.
-
-### Option 2: Project Context (For Developers)
-
-If you're working in a project directory and want Claude to automatically have IDC knowledge:
-
-1. Clone this repository into your project (or as a subdirectory)
-2. Claude Desktop and Claude Code can then access all skill files including reference guides
-
-```bash
-# Clone into your project
-cd /path/to/your-project
-git clone https://github.com/ImagingDataCommons/idc-claude-skill.git
-
-# Or add as a submodule
-git submodule add https://github.com/ImagingDataCommons/idc-claude-skill.git
-```
-
-Alternatively, concatenate all files into a single `CLAUDE.md`:
-
-```bash
-# Create a combined skill file
-cat SKILL.md references/bigquery_guide.md references/dicomweb_guide.md > /path/to/your-project/CLAUDE.md
-```
+For persistent access across conversations, create a **Project** in Claude Desktop, upload the ZIP to the project's knowledge base, and configure the allowed domains in the project's Capabilities settings.
 
 ### Verifying the Skill is Loaded
 
@@ -203,9 +174,8 @@ Claude: [Checks license and explains usage restrictions]
 ### Skill Not Loading
 
 - **Claude Code**: Verify the symlink exists at `~/.claude/skills/imaging-data-commons` and points to the correct directory
-- **File attachment** (Claude Desktop): Ensure `SKILL.md` is attached to your conversation before asking IDC-related questions
-- **Reference guides**: For BigQuery or DICOMweb questions, also attach the relevant guides from `references/`
-- **File size**: `SKILL.md` is large (~50KB). If Claude seems unaware of IDC, the file may not have been fully loaded
+- **ZIP attachment** (Claude.ai): Ensure the repository ZIP is attached to your conversation before asking IDC-related questions
+- **File size**: The ZIP file is large. If Claude seems unaware of IDC, the file may not have been fully loaded
 
 ### Skill Not Responding as Expected
 

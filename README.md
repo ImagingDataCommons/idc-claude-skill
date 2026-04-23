@@ -27,14 +27,6 @@ If the skill provides incorrect or incomplete answers, please [open an issue](ht
 
 See [USAGE.md](USAGE.md) for detailed instructions on loading this skill in Claude Desktop or via the API.
 
-## Also Available In
-
-This skill is included in the [K-Dense-AI/claude-scientific-skills](https://github.com/K-Dense-AI/claude-scientific-skills) collection alongside other scientific skills.
-
-**Choose this repo if:** You only need Imaging Data Commons functionality
-
-**Choose the collection if:** You want multiple scientific skills in one place
-
 ## Versioning
 
 This skill follows [Semantic Versioning](https://semver.org/).
