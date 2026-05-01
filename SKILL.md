@@ -130,9 +130,9 @@ The `idc-index` package provides multiple metadata index tables, accessible via 
 |-------|-----------------|--------|-------------|
 | `index` | 1 row = 1 DICOM series | Auto | Primary metadata for all current IDC data |
 | `prior_versions_index` | 1 row = 1 DICOM series | Auto | Series from previous IDC releases; for downloading deprecated data |
-| `collections_index` | 1 row = 1 collection | fetch_index() | Collection-level metadata and descriptions |
-| `analysis_results_index` | 1 row = 1 analysis result collection | fetch_index() | Metadata about derived datasets (annotations, segmentations) |
-| `clinical_index` | 1 row = 1 clinical data column | fetch_index() | Dictionary mapping clinical table columns to collections |
+| `collections_index` | 1 row = 1 collection | Auto | Collection-level metadata and descriptions |
+| `analysis_results_index` | 1 row = 1 analysis result collection | Auto | Metadata about derived datasets (annotations, segmentations) |
+| `clinical_index` | 1 row = 1 (collection, table, column) triple | fetch_index() | Dictionary mapping clinical data table columns to collections |
 | `sm_index` | 1 row = 1 slide microscopy series | fetch_index() | Slide Microscopy (pathology) series metadata |
 | `sm_instance_index` | 1 row = 1 slide microscopy instance | fetch_index() | Instance-level (SOPInstanceUID) metadata for slide microscopy |
 | `seg_index` | 1 row = 1 DICOM Segmentation series | fetch_index() | Segmentation metadata: algorithm, segment count, reference to source image series |
