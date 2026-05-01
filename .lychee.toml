@@ -9,4 +9,6 @@ exclude = [
     "^https://claude\\.ai/",
     # GitHub issue creation requires login
     "^https://github\\.com/.*/issues/new",
+    # DICOM NEMA server
+    "^https://dicom\\.nema\\.org"
 ]
