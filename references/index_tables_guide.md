@@ -1,6 +1,6 @@
 # Index Tables Guide for IDC
 
-**Tested with:** idc-index 0.11.14 (IDC data version v23)
+**Tested with:** idc-index 0.12.1 (IDC data version v24)
 
 This guide covers the structure and access patterns for IDC index tables: programmatic schema discovery, DataFrame access, and join column references. For the overview of available tables and their purposes, see the "Index Tables" section in the main SKILL.md.
 
@@ -34,7 +34,7 @@ results = client.sql_query("SELECT * FROM index WHERE Modality = 'CT' LIMIT 10")
 
 # Fetch and query additional indices
 client.fetch_index("collections_index")
-collections = client.sql_query("SELECT collection_id, CancerTypes, TumorLocations FROM collections_index")
+collections = client.sql_query("SELECT collection_id, cancer_types, tumor_locations FROM collections_index")
 
 client.fetch_index("analysis_results_index")
 analysis = client.sql_query("SELECT * FROM analysis_results_index LIMIT 5")

@@ -5,6 +5,33 @@ All notable changes to the IDC Claude Skill are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.0] - 2026-05-07
+
+### Added
+
+- `tests/test_bq_snippets.py`: BigQuery snippet validation using `bq query --dry_run` — 33 tests covering all SQL examples in `references/bigquery_guide.md` (dicom_all, original_collections_metadata, segmentations, quantitative_measurements, qualitative_measurements, private elements, and clinical tables); skips automatically when `bq` CLI is unavailable or unauthenticated
+
+### Security
+
+- Fixed auto-upgrade subprocess call to pin `idc-index` to `REQUIRED_VERSION` (was `"idc-index"`, now `f"idc-index=={REQUIRED_VERSION}"`), ensuring the installed version always matches the tested version declared in the frontmatter
+- Added network access transparency note to Overview documenting expected external endpoints (GCS, S3, BigQuery, DICOMweb proxy, Google Healthcare API) and clarifying that no credentials or environment variables are accessed by the skill
+- Added tested-with version comment to optional dependency install block (`pandas>=1.5, numpy>=1.23, pydicom>=2.3`)
+
+### Changed
+
+- Updated frontmatter description to be directive about skill triggering: now explicitly instructs invocation for IDC-related queries even without the word "IDC" in the prompt
+- Extracted "Batch Processing and Filtering" (section 6) from SKILL.md to `references/use_cases.md` (Use Case 5); replaced inline code block with a 2-sentence summary and pointer
+- Extracted "Integration with Analysis Pipelines" (section 9) from SKILL.md to `references/use_cases.md` (Use Case 6); replaced inline pydicom/SimpleITK code blocks with a 2-sentence summary and pointer
+- SKILL.md reduced from 865 → 775 lines (−90 lines); `references/use_cases.md` expanded from 187 → 278 lines
+- Updated to idc-index 0.12.1 (idc-index-data 24.0.4, IDC data version v24)
+- IDC v24 adds 15 new collections (161 → 176), ~39K new series, ~4 TB new data (99.27 TB total, 85,682 cases)
+- Updated `collections_index` column names to snake_case (idc-index-data 24.0.0 breaking change):
+  `CancerTypes` → `cancer_types`, `TumorLocations` → `tumor_locations`,
+  `Subjects` → `subjects`, `Species` → `species`, `Sources` → `sources`,
+  `SupportingData` → `supporting_data`, `Program` → `program_id`
+- Updated `analysis_results_index` column names to snake_case (idc-index-data 24.0.4 breaking change):
+  `Subjects` → `subjects`, `Collections` → `collections`, `Modalities` → `modalities`
+
 ## [1.5.0] - 2026-04-08
 
 ### Added

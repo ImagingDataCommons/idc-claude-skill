@@ -1,12 +1,12 @@
 ---
 name: imaging-data-commons
-description: Query and download public cancer imaging data from NCI Imaging Data Commons using idc-index. Use for accessing large-scale radiology (CT, MR, PET) and pathology datasets for AI training or research. No authentication required. Query by metadata, visualize in browser, check licenses.
+description: Query and download public cancer imaging data from NCI Imaging Data Commons using idc-index. Invoke for any question about IDC collections, cancer imaging datasets, DICOM data access, radiology (CT, MR, PET) or pathology AI training sets, metadata queries, visualization, or license checks — even when the user doesn't explicitly mention "IDC". No authentication required.
 license: This skill is provided under the MIT License. IDC data itself has individual licensing (mostly CC-BY, some CC-NC) that must be respected when using the data.
 metadata:
-    version: 1.4.0
+    version: 1.6.0
     skill-author: Andrey Fedorov, @fedorov
-    idc-index: "0.11.14"
-    idc-data-version: "v23"
+    idc-index: "0.12.1"
+    idc-data-version: "v24"
     repository: https://github.com/ImagingDataCommons/idc-claude-skill
 ---
 
@@ -16,7 +16,9 @@ metadata:
 
 Use the `idc-index` Python package to query and download public cancer imaging data from the National Cancer Institute Imaging Data Commons (IDC). No authentication required for data access.
 
-**Current IDC Data Version: v23** (always verify with `IDCClient().get_idc_version()`)
+**Expected network access:** `idc-index` queries a local DuckDB index (no network for metadata). File downloads use public GCS (`storage.googleapis.com`) and AWS S3 (`s3.amazonaws.com`) — no authentication required. DICOMweb access uses either the public IDC proxy (`proxy.imaging.datacommons.cancer.gov`, no auth) or the Google Cloud Healthcare API (`healthcare.googleapis.com`, requires GCP authentication). Optional BigQuery queries (`bigquery.googleapis.com`) also require GCP authentication. No credentials or environment variables are accessed by this skill.
+
+**Current IDC Data Version: v24** (always verify with `IDCClient().get_idc_version()`)
 
 **Primary tool:** `idc-index` ([GitHub](https://github.com/imagingdatacommons/idc-index))
 
@@ -25,13 +27,13 @@ Use the `idc-index` Python package to query and download public cancer imaging d
 ```python
 import idc_index
 
-REQUIRED_VERSION = "0.11.14"  # Must match metadata.idc-index in this file
+REQUIRED_VERSION = "0.12.1"  # Must match metadata.idc-index in this file
 installed = idc_index.__version__
 
 if installed < REQUIRED_VERSION:
     print(f"Upgrading idc-index from {installed} to {REQUIRED_VERSION}...")
     import subprocess
-    subprocess.run(["pip3", "install", "--upgrade", "--break-system-packages", "idc-index"], check=True)
+    subprocess.run(["pip3", "install", "--upgrade", "--break-system-packages", f"idc-index=={REQUIRED_VERSION}"], check=True)
     print("Upgrade complete. Restart Python to use new version.")
 else:
     print(f"idc-index {installed} meets requirement ({REQUIRED_VERSION})")
@@ -43,7 +45,7 @@ else:
 from idc_index import IDCClient
 client = IDCClient()
 
-# Verify IDC data version (should be "v23")
+# Verify IDC data version (should be "v24")
 print(f"IDC data version: {client.get_idc_version()}")
 
 # Get collection count and total series
@@ -130,8 +132,8 @@ The `idc-index` package provides multiple metadata index tables, accessible via 
 |-------|-----------------|--------|-------------|
 | `index` | 1 row = 1 DICOM series | Auto | Primary metadata for all current IDC data |
 | `prior_versions_index` | 1 row = 1 DICOM series | Auto | Series from previous IDC releases; for downloading deprecated data |
-| `collections_index` | 1 row = 1 collection | Auto | Collection-level metadata and descriptions |
-| `analysis_results_index` | 1 row = 1 analysis result collection | Auto | Metadata about derived datasets (annotations, segmentations) |
+| `collections_index` | 1 row = 1 collection | fetch_index() | Collection-level metadata and descriptions |
+| `analysis_results_index` | 1 row = 1 analysis result collection | fetch_index() | Metadata about derived datasets (annotations, segmentations) |
 | `clinical_index` | 1 row = 1 (collection, table, column) triple | fetch_index() | Dictionary mapping clinical data table columns to collections |
 | `sm_index` | 1 row = 1 slide microscopy series | fetch_index() | Slide Microscopy (pathology) series metadata |
 | `sm_instance_index` | 1 row = 1 slide microscopy instance | fetch_index() | Instance-level (SOPInstanceUID) metadata for slide microscopy |
@@ -235,16 +237,17 @@ pip install --upgrade idc-index
 
 **Important:** New IDC data release will always trigger a new version of `idc-index`. Always use `--upgrade` flag while installing, unless an older version is needed for reproducibility.
 
-**IMPORTANT:** IDC data version v23 is current. Always verify your version:
+**IMPORTANT:** IDC data version v24 is current. Always verify your version:
 ```python
-print(client.get_idc_version())  # Should return "v23"
+print(client.get_idc_version())  # Should return "v24"
 ```
 If you see an older version, upgrade with: `pip install --upgrade idc-index`
 
-**Tested with:** idc-index 0.11.14 (IDC data version v23)
+**Tested with:** idc-index 0.12.1 (IDC data version v24)
 
 **Optional (for data analysis):**
 ```bash
+# Tested with: pandas>=1.5, numpy>=1.23, pydicom>=2.3
 pip install pandas numpy pydicom
 ```
 
@@ -275,14 +278,14 @@ collections_summary = client.sql_query(query)
 # For richer collection metadata, use collections_index
 client.fetch_index("collections_index")
 collections_info = client.sql_query("""
-    SELECT collection_id, CancerTypes, TumorLocations, Species, Subjects, SupportingData
+    SELECT collection_id, cancer_types, tumor_locations, species, subjects, supporting_data
     FROM collections_index
 """)
 
 # For analysis results (annotations, segmentations), use analysis_results_index
 client.fetch_index("analysis_results_index")
 analysis_info = client.sql_query("""
-    SELECT analysis_result_id, analysis_result_title, Subjects, Collections, Modalities
+    SELECT analysis_result_id, analysis_result_title, subjects, collections, modalities
     FROM analysis_results_index
 """)
 ```
@@ -351,7 +354,7 @@ results = client.sql_query("""
     SELECT i.collection_id, i.PatientID, i.SeriesInstanceUID, i.Modality
     FROM index i
     JOIN collections_index c ON i.collection_id = c.collection_id
-    WHERE c.CancerTypes LIKE '%Breast%'
+    WHERE c.cancer_types LIKE '%Breast%'
       AND i.Modality = 'MR'
     LIMIT 20
 """)
@@ -364,7 +367,7 @@ results = client.sql_query("""
 - Descriptions: StudyDescription, SeriesDescription
 - Licensing: license_short_name
 
-**Note:** Cancer type is in `collections_index.CancerTypes`, not in the primary `index` table.
+**Note:** Cancer type is in `collections_index.cancer_types`, not in the primary `index` table.
 
 ### 3. Downloading DICOM Files
 
@@ -604,43 +607,9 @@ bibtex_citations = client.citations_from_selection(
 
 ### 6. Batch Processing and Filtering
 
-Process large datasets efficiently with filtering:
+For large downloads, query first to build a manifest, save it to CSV for reproducibility, then iterate over slices of the result DataFrame with `download_from_selection()` using a `batch_size` of 10–20 series to avoid timeouts.
 
-```python
-from idc_index import IDCClient
-import pandas as pd
-
-client = IDCClient()
-
-# Find chest CT scans from GE scanners
-query = """
-SELECT
-  SeriesInstanceUID,
-  PatientID,
-  collection_id,
-  ManufacturerModelName
-FROM index
-WHERE Modality = 'CT'
-  AND BodyPartExamined = 'CHEST'
-  AND Manufacturer = 'GE MEDICAL SYSTEMS'
-  AND license_short_name = 'CC BY 4.0'
-LIMIT 100
-"""
-
-results = client.sql_query(query)
-
-# Save manifest for later
-results.to_csv('lung_ct_manifest.csv', index=False)
-
-# Download in batches to avoid timeout
-batch_size = 10
-for i in range(0, len(results), batch_size):
-    batch = results.iloc[i:i+batch_size]
-    client.download_from_selection(
-        seriesInstanceUID=list(batch['SeriesInstanceUID'].values),
-        downloadDir=f"./data/batch_{i//batch_size}"
-    )
-```
+See `references/use_cases.md` (Use Case 5) for a complete worked example with manufacturer filtering, manifest saving, and batched downloads.
 
 ### 7. Advanced Queries with BigQuery
 
@@ -681,67 +650,9 @@ See `references/bigquery_guide.md` for schemas, column descriptions, and query e
 
 ### 9. Integration with Analysis Pipelines
 
-Integrate IDC data into imaging analysis workflows:
+After downloading DICOM files, use `pydicom` to read individual files or build 3D numpy arrays sorted by `ImagePositionPatient`. For a more robust reader with automatic series sorting and ITK image output, use `SimpleITK.ImageSeriesReader`.
 
-**Read downloaded DICOM files:**
-```python
-import pydicom
-import os
-
-# Read DICOM files from downloaded series
-series_dir = "./data/rider/rider_pilot/RIDER-1007893286/CT_1.3.6.1..."
-
-dicom_files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)
-               if f.endswith('.dcm')]
-
-# Load first image
-ds = pydicom.dcmread(dicom_files[0])
-print(f"Patient ID: {ds.PatientID}")
-print(f"Modality: {ds.Modality}")
-print(f"Image shape: {ds.pixel_array.shape}")
-```
-
-**Build 3D volume from CT series:**
-```python
-import pydicom
-import numpy as np
-from pathlib import Path
-
-def load_ct_series(series_path):
-    """Load CT series as 3D numpy array"""
-    files = sorted(Path(series_path).glob('*.dcm'))
-    slices = [pydicom.dcmread(str(f)) for f in files]
-
-    # Sort by slice location
-    slices.sort(key=lambda x: float(x.ImagePositionPatient[2]))
-
-    # Stack into 3D array
-    volume = np.stack([s.pixel_array for s in slices])
-
-    return volume, slices[0]  # Return volume and first slice for metadata
-
-volume, metadata = load_ct_series("./data/lung_ct/series_dir")
-print(f"Volume shape: {volume.shape}")  # (z, y, x)
-```
-
-**Integrate with SimpleITK:**
-```python
-import SimpleITK as sitk
-from pathlib import Path
-
-# Read DICOM series
-series_path = "./data/ct_series"
-reader = sitk.ImageSeriesReader()
-dicom_names = reader.GetGDCMSeriesFileNames(series_path)
-reader.SetFileNames(dicom_names)
-image = reader.Execute()
-
-# Apply processing
-smoothed = sitk.CurvatureFlow(image1=image, timeStep=0.125, numberOfIterations=5)
-
-# Save as NIfTI
-sitk.WriteImage(smoothed, "processed_volume.nii.gz")
-```
+See `references/use_cases.md` (Use Case 6) for code examples reading DICOM with pydicom, building 3D CT volumes, and integrating with SimpleITK.
 
 ## Common Use Cases
 
@@ -753,7 +664,7 @@ See `references/use_cases.md` for complete end-to-end workflow examples includin
 
 ## Best Practices
 
-- **Verify IDC version before generating responses** - Always call `client.get_idc_version()` at the start of a session to confirm you're using the expected data version (currently v23). If using an older version, recommend `pip install --upgrade idc-index`
+- **Verify IDC version before generating responses** - Always call `client.get_idc_version()` at the start of a session to confirm you're using the expected data version (currently v24). If using an older version, recommend `pip install --upgrade idc-index`
 - **Check licenses before use** - Always query the `license_short_name` field and respect licensing terms (CC BY vs CC BY-NC)
 - **Generate citations for attribution** - Use `citations_from_selection()` to get properly formatted citations from `source_DOI` values; include these in publications
 - **Start with small queries** - Use `LIMIT` clause when exploring to avoid long downloads and understand data structure

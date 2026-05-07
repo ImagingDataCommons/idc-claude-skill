@@ -1,6 +1,6 @@
 # SQL Query Patterns for IDC
 
-**Tested with:** idc-index 0.11.14 (IDC data version v23)
+**Tested with:** idc-index 0.12.1 (IDC data version v24)
 
 Quick reference for common SQL query patterns when working with IDC data. For detailed examples with context, see the "Core Capabilities" section in the main SKILL.md.
 
@@ -74,7 +74,7 @@ client.sql_query("""
 # List analysis result collections (curated derived datasets)
 client.fetch_index("analysis_results_index")
 client.sql_query("""
-    SELECT analysis_result_id, analysis_result_title, Collections, Modalities
+    SELECT analysis_result_id, analysis_result_title, collections, modalities
     FROM analysis_results_index
 """)
 

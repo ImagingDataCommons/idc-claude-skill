@@ -1,4 +1,4 @@
-idc-index==0.11.14
+idc-index==0.12.1
 pandas
 pytest
 pytest-timeout
