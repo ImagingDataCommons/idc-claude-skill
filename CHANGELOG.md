@@ -5,6 +5,19 @@ All notable changes to the IDC Claude Skill are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.0] - 2026-05-07
+
+### Changed
+
+- Updated to idc-index 0.12.1 (idc-index-data 24.0.4, IDC data version v24)
+- IDC v24 adds 15 new collections (161 → 176), ~39K new series, ~4 TB new data (99.27 TB total, 85,682 cases)
+- Updated `collections_index` column names to snake_case (idc-index-data 24.0.0 breaking change):
+  `CancerTypes` → `cancer_types`, `TumorLocations` → `tumor_locations`,
+  `Subjects` → `subjects`, `Species` → `species`, `Sources` → `sources`,
+  `SupportingData` → `supporting_data`, `Program` → `program_id`
+- Updated `analysis_results_index` column names to snake_case (idc-index-data 24.0.4 breaking change):
+  `Subjects` → `subjects`, `Collections` → `collections`, `Modalities` → `modalities`
+
 ## [1.5.0] - 2026-04-08
 
 ### Added

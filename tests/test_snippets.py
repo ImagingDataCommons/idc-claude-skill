@@ -6,10 +6,11 @@ Covers: SKILL.md, references/sql_patterns.md, references/index_tables_guide.md,
 
 Excluded (require auth or network I/O beyond metadata):
   - Actual DICOM downloads
-  - BigQuery queries
   - DICOMweb endpoints
   - Direct S3/GCS access
   - pydicom / SimpleITK integration (no downloaded files)
+
+BigQuery snippets are covered separately in test_bq_snippets.py (uses bq CLI dry-run).
 """
 
 import pandas as pd
@@ -54,13 +55,13 @@ class TestVersionAndSetup:
     """SKILL.md: version check and IDC data version."""
 
     def test_package_version_meets_requirement(self):
-        required = "0.11.14"
+        required = "0.12.1"
         assert idc_index.__version__ >= required, (
             f"idc-index {idc_index.__version__} < required {required}"
         )
 
-    def test_idc_data_version_is_v23(self, client):
-        assert client.get_idc_version() == "v23"
+    def test_idc_data_version_is_v24(self, client):
+        assert client.get_idc_version() == "v24"
 
 
 # ===========================================================================
@@ -111,14 +112,14 @@ class TestDataDiscovery:
 
     def test_collections_index(self, client_with_all_indices):
         df = client_with_all_indices.sql_query("""
-            SELECT collection_id, CancerTypes, TumorLocations, Species, Subjects, SupportingData
+            SELECT collection_id, cancer_types, tumor_locations, species, subjects, supporting_data
             FROM collections_index
         """)
         assert len(df) > 0
 
     def test_analysis_results_index(self, client_with_all_indices):
         df = client_with_all_indices.sql_query("""
-            SELECT analysis_result_id, analysis_result_title, Subjects, Collections, Modalities
+            SELECT analysis_result_id, analysis_result_title, subjects, collections, modalities
             FROM analysis_results_index
         """)
         assert len(df) > 0
@@ -168,7 +169,7 @@ class TestSQLQueries:
             SELECT i.collection_id, i.PatientID, i.SeriesInstanceUID, i.Modality
             FROM index i
             JOIN collections_index c ON i.collection_id = c.collection_id
-            WHERE c.CancerTypes LIKE '%Breast%' AND i.Modality = 'MR'
+            WHERE c.cancer_types LIKE '%Breast%' AND i.Modality = 'MR'
             LIMIT 20
         """)
         assert df is not None
@@ -283,7 +284,7 @@ class TestIndexTablesGuide:
 
     def test_collections_index_sql(self, client_with_all_indices):
         df = client_with_all_indices.sql_query(
-            "SELECT collection_id, CancerTypes, TumorLocations FROM collections_index"
+            "SELECT collection_id, cancer_types, tumor_locations FROM collections_index"
         )
         assert len(df) > 0
 
@@ -375,7 +376,7 @@ class TestAnnotationsAndSegmentations:
         df = client_with_all_indices.sql_query("""
             SELECT analysis_result_id, analysis_result_title
             FROM analysis_results_index
-            WHERE Collections LIKE '%tcga_luad%'
+            WHERE collections LIKE '%tcga_luad%'
         """)
         assert df is not None
 
