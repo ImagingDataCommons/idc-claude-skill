@@ -5,6 +5,12 @@ All notable changes to the IDC Claude Skill are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Removed `CHANGELOG.md` from release zip artifact; changelog is available on the GitHub releases page and not needed in the install package
+
 ## [1.6.0] - 2026-05-07
 
 ### Added
