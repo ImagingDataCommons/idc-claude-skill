@@ -1,7 +1,9 @@
 ---
 name: imaging-data-commons
-description: Query and download public cancer imaging data from NCI Imaging Data Commons using idc-index. Use for accessing large-scale radiology (CT, MR, PET) and pathology datasets for AI training or research. No authentication required. Query by metadata, visualize in browser, check licenses.
+description: Query and download public cancer imaging data from NCI Imaging Data Commons using idc-index. Invoke for any question about IDC collections, cancer imaging datasets, DICOM data access, radiology (CT, MR, PET) or pathology AI training sets, metadata queries, visualization, or license checks — even when the user doesn't explicitly mention "IDC". No authentication required.
 license: This skill is provided under the MIT License. IDC data itself has individual licensing (mostly CC-BY, some CC-NC) that must be respected when using the data.
+compatibility:
+  allowed-tools: [Bash, Read, WebFetch, WebSearch]
 metadata:
     version: 1.6.0
     skill-author: Andrey Fedorov, @fedorov
@@ -607,43 +609,9 @@ bibtex_citations = client.citations_from_selection(
 
 ### 6. Batch Processing and Filtering
 
-Process large datasets efficiently with filtering:
+For large downloads, query first to build a manifest, save it to CSV for reproducibility, then iterate over slices of the result DataFrame with `download_from_selection()` using a `batch_size` of 10–20 series to avoid timeouts.
 
-```python
-from idc_index import IDCClient
-import pandas as pd
-
-client = IDCClient()
-
-# Find chest CT scans from GE scanners
-query = """
-SELECT
-  SeriesInstanceUID,
-  PatientID,
-  collection_id,
-  ManufacturerModelName
-FROM index
-WHERE Modality = 'CT'
-  AND BodyPartExamined = 'CHEST'
-  AND Manufacturer = 'GE MEDICAL SYSTEMS'
-  AND license_short_name = 'CC BY 4.0'
-LIMIT 100
-"""
-
-results = client.sql_query(query)
-
-# Save manifest for later
-results.to_csv('lung_ct_manifest.csv', index=False)
-
-# Download in batches to avoid timeout
-batch_size = 10
-for i in range(0, len(results), batch_size):
-    batch = results.iloc[i:i+batch_size]
-    client.download_from_selection(
-        seriesInstanceUID=list(batch['SeriesInstanceUID'].values),
-        downloadDir=f"./data/batch_{i//batch_size}"
-    )
-```
+See `references/use_cases.md` (Use Case 5) for a complete worked example with manufacturer filtering, manifest saving, and batched downloads.
 
 ### 7. Advanced Queries with BigQuery
 
@@ -684,67 +652,9 @@ See `references/bigquery_guide.md` for schemas, column descriptions, and query e
 
 ### 9. Integration with Analysis Pipelines
 
-Integrate IDC data into imaging analysis workflows:
+After downloading DICOM files, use `pydicom` to read individual files or build 3D numpy arrays sorted by `ImagePositionPatient`. For a more robust reader with automatic series sorting and ITK image output, use `SimpleITK.ImageSeriesReader`.
 
-**Read downloaded DICOM files:**
-```python
-import pydicom
-import os
-
-# Read DICOM files from downloaded series
-series_dir = "./data/rider/rider_pilot/RIDER-1007893286/CT_1.3.6.1..."
-
-dicom_files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)
-               if f.endswith('.dcm')]
-
-# Load first image
-ds = pydicom.dcmread(dicom_files[0])
-print(f"Patient ID: {ds.PatientID}")
-print(f"Modality: {ds.Modality}")
-print(f"Image shape: {ds.pixel_array.shape}")
-```
-
-**Build 3D volume from CT series:**
-```python
-import pydicom
-import numpy as np
-from pathlib import Path
-
-def load_ct_series(series_path):
-    """Load CT series as 3D numpy array"""
-    files = sorted(Path(series_path).glob('*.dcm'))
-    slices = [pydicom.dcmread(str(f)) for f in files]
-
-    # Sort by slice location
-    slices.sort(key=lambda x: float(x.ImagePositionPatient[2]))
-
-    # Stack into 3D array
-    volume = np.stack([s.pixel_array for s in slices])
-
-    return volume, slices[0]  # Return volume and first slice for metadata
-
-volume, metadata = load_ct_series("./data/lung_ct/series_dir")
-print(f"Volume shape: {volume.shape}")  # (z, y, x)
-```
-
-**Integrate with SimpleITK:**
-```python
-import SimpleITK as sitk
-from pathlib import Path
-
-# Read DICOM series
-series_path = "./data/ct_series"
-reader = sitk.ImageSeriesReader()
-dicom_names = reader.GetGDCMSeriesFileNames(series_path)
-reader.SetFileNames(dicom_names)
-image = reader.Execute()
-
-# Apply processing
-smoothed = sitk.CurvatureFlow(image1=image, timeStep=0.125, numberOfIterations=5)
-
-# Save as NIfTI
-sitk.WriteImage(smoothed, "processed_volume.nii.gz")
-```
+See `references/use_cases.md` (Use Case 6) for code examples reading DICOM with pydicom, building 3D CT volumes, and integrating with SimpleITK.
 
 ## Common Use Cases
 

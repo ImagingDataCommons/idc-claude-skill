@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Updated frontmatter description to be directive about skill triggering: now explicitly instructs invocation for IDC-related queries even without the word "IDC" in the prompt
+- Added `compatibility: allowed-tools: [Bash, Read, WebFetch, WebSearch]` to frontmatter to declare required tool scope: Bash for running code, Read for loading reference guides, WebFetch for documentation pages, WebSearch for current information
+- Extracted "Batch Processing and Filtering" (section 6) from SKILL.md to `references/use_cases.md` (Use Case 5); replaced inline code block with a 2-sentence summary and pointer
+- Extracted "Integration with Analysis Pipelines" (section 9) from SKILL.md to `references/use_cases.md` (Use Case 6); replaced inline pydicom/SimpleITK code blocks with a 2-sentence summary and pointer
+- SKILL.md reduced from 865 → 775 lines (−90 lines); `references/use_cases.md` expanded from 187 → 278 lines
 - Updated to idc-index 0.12.1 (idc-index-data 24.0.4, IDC data version v24)
 - IDC v24 adds 15 new collections (161 → 176), ~39K new series, ~4 TB new data (99.27 TB total, 85,682 cases)
 - Updated `collections_index` column names to snake_case (idc-index-data 24.0.0 breaking change):
