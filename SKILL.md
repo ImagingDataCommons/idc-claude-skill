@@ -16,6 +16,8 @@ metadata:
 
 Use the `idc-index` Python package to query and download public cancer imaging data from the National Cancer Institute Imaging Data Commons (IDC). No authentication required for data access.
 
+**Expected network access:** `idc-index` queries a local DuckDB index (no network for metadata). File downloads use public GCS (`storage.googleapis.com`) and AWS S3 (`s3.amazonaws.com`) — no authentication required. DICOMweb access uses either the public IDC proxy (`proxy.imaging.datacommons.cancer.gov`, no auth) or the Google Cloud Healthcare API (`healthcare.googleapis.com`, requires GCP authentication). Optional BigQuery queries (`bigquery.googleapis.com`) also require GCP authentication. No credentials or environment variables are accessed by this skill.
+
 **Current IDC Data Version: v24** (always verify with `IDCClient().get_idc_version()`)
 
 **Primary tool:** `idc-index` ([GitHub](https://github.com/imagingdatacommons/idc-index))
@@ -31,7 +33,7 @@ installed = idc_index.__version__
 if installed < REQUIRED_VERSION:
     print(f"Upgrading idc-index from {installed} to {REQUIRED_VERSION}...")
     import subprocess
-    subprocess.run(["pip3", "install", "--upgrade", "--break-system-packages", "idc-index"], check=True)
+    subprocess.run(["pip3", "install", "--upgrade", "--break-system-packages", f"idc-index=={REQUIRED_VERSION}"], check=True)
     print("Upgrade complete. Restart Python to use new version.")
 else:
     print(f"idc-index {installed} meets requirement ({REQUIRED_VERSION})")
@@ -245,6 +247,7 @@ If you see an older version, upgrade with: `pip install --upgrade idc-index`
 
 **Optional (for data analysis):**
 ```bash
+# Tested with: pandas>=1.5, numpy>=1.23, pydicom>=2.3
 pip install pandas numpy pydicom
 ```
 

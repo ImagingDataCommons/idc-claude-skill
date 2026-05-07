@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - `tests/test_bq_snippets.py`: BigQuery snippet validation using `bq query --dry_run` — 33 tests covering all SQL examples in `references/bigquery_guide.md` (dicom_all, original_collections_metadata, segmentations, quantitative_measurements, qualitative_measurements, private elements, and clinical tables); skips automatically when `bq` CLI is unavailable or unauthenticated
 
+### Security
+
+- Fixed auto-upgrade subprocess call to pin `idc-index` to `REQUIRED_VERSION` (was `"idc-index"`, now `f"idc-index=={REQUIRED_VERSION}"`), ensuring the installed version always matches the tested version declared in the frontmatter
+- Added network access transparency note to Overview documenting expected external endpoints (GCS, S3, BigQuery, DICOMweb proxy, Google Healthcare API) and clarifying that no credentials or environment variables are accessed by the skill
+- Added tested-with version comment to optional dependency install block (`pandas>=1.5, numpy>=1.23, pydicom>=2.3`)
+
 ### Changed
 
 - Updated to idc-index 0.12.1 (idc-index-data 24.0.4, IDC data version v24)
