@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [1.6.0] - 2026-05-07
 
+### Added
+
+- `tests/test_bq_snippets.py`: BigQuery snippet validation using `bq query --dry_run` — 33 tests covering all SQL examples in `references/bigquery_guide.md` (dicom_all, original_collections_metadata, segmentations, quantitative_measurements, qualitative_measurements, private elements, and clinical tables); skips automatically when `bq` CLI is unavailable or unauthenticated
+
 ### Changed
 
 - Updated to idc-index 0.12.1 (idc-index-data 24.0.4, IDC data version v24)
