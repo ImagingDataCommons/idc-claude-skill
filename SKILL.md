@@ -82,7 +82,7 @@ print(stats)
 - IDC Data Model - Collection and analysis result hierarchy
 - Index Tables - Available tables and joining patterns
 - Installation - Package setup and version verification
-- Core Capabilities - Essential API patterns (query, download, visualize, license, citations, batch)
+- Core Capabilities - Essential API patterns (query, download, visualize, license, citations)
 - Best Practices - Usage guidelines
 - Troubleshooting - Common issues and solutions
 
@@ -91,7 +91,7 @@ print(stats)
 | Guide | When to Load |
 |-------|--------------|
 | `index_tables_guide.md` | Complex JOINs, schema discovery, DataFrame access |
-| `use_cases.md` | End-to-end workflow examples (training datasets, batch downloads) |
+| `use_cases.md` | End-to-end workflows: training datasets, batch downloads, DICOM reading with pydicom/SimpleITK, pipeline integration |
 | `sql_patterns.md` | Quick SQL patterns for filter discovery, annotations, size estimation |
 | `clinical_data_guide.md` | Clinical/tabular data, imaging+clinical joins, value mapping |
 | `cloud_storage_guide.md` | Direct S3/GCS access, versioning, UUID mapping |
@@ -161,10 +161,9 @@ Always call `client.fetch_index("table_name")` before querying any index table �
 | `source_DOI` | index, analysis_results_index | Link by publication DOI |
 | `crdc_series_uuid` | index, prior_versions_index | Link by CRDC unique identifier |
 | `Modality` | index, prior_versions_index | Filter by imaging modality |
-| `SeriesInstanceUID` | index, seg_index, ann_index, ann_group_index, contrast_index | Link segmentation/annotation/contrast series to its index metadata |
+| `SeriesInstanceUID` | index, seg_index, ann_index, ann_group_index, contrast_index, volume_geometry_index | Link series to seg/ann/contrast/geometry index tables |
 | `segmented_SeriesInstanceUID` | seg_index → index | Link segmentation to its source image series (join seg_index.segmented_SeriesInstanceUID = index.SeriesInstanceUID) |
 | `referenced_SeriesInstanceUID` | ann_index → index | Link annotation to its source image series (join ann_index.referenced_SeriesInstanceUID = index.SeriesInstanceUID) |
-| `SeriesInstanceUID` | index, volume_geometry_index | Link series to its 3D geometry validation result (join index.SeriesInstanceUID = volume_geometry_index.SeriesInstanceUID) |
 | `SeriesInstanceUID` / `referenced_SeriesInstanceUID` | index, rtstruct_index | Join RTSTRUCT series to its metadata (index.SeriesInstanceUID = rtstruct_index.SeriesInstanceUID); use rtstruct_index.referenced_SeriesInstanceUID to find the source image series |
 
 **Note:** `subjects`, `updated`, and `description` appear in multiple tables but have different meanings (counts vs identifiers, different update contexts).
@@ -236,14 +235,6 @@ pip install --upgrade idc-index
 ```
 
 **Important:** New IDC data release will always trigger a new version of `idc-index`. Always use `--upgrade` flag while installing, unless an older version is needed for reproducibility.
-
-**IMPORTANT:** IDC data version v24 is current. Always verify your version:
-```python
-print(client.get_idc_version())  # Should return "v24"
-```
-If you see an older version, upgrade with: `pip install --upgrade idc-index`
-
-**Tested with:** idc-index 0.12.2 (IDC data version v24)
 
 **Optional (for data analysis):**
 ```bash
@@ -606,13 +597,7 @@ bibtex_citations = client.citations_from_selection(
 
 **Best practice:** When publishing results using IDC data, include the generated citations to properly attribute the data sources and satisfy license requirements.
 
-### 6. Batch Processing and Filtering
-
-For large downloads, query first to build a manifest, save it to CSV for reproducibility, then iterate over slices of the result DataFrame with `download_from_selection()` using a `batch_size` of 10–20 series to avoid timeouts.
-
-See `references/use_cases.md` (Use Case 5) for a complete worked example with manufacturer filtering, manifest saving, and batched downloads.
-
-### 7. Advanced Queries with BigQuery
+### 6. Advanced Queries with BigQuery
 
 For queries requiring full DICOM metadata, complex JOINs, clinical data tables, or private DICOM elements, use Google BigQuery. Requires GCP account with billing enabled.
 
@@ -638,7 +623,7 @@ Common specialized indices: `seg_index` (segmentations), `ann_index` / `ann_grou
 
 See `references/bigquery_guide.md` for schemas, column descriptions, and query examples for these tables.
 
-### 8. Tool Selection Guide
+### 7. Tool Selection Guide
 
 | Task | Tool | Reference |
 |------|------|-----------|
@@ -648,20 +633,6 @@ See `references/bigquery_guide.md` for schemas, column descriptions, and query e
 | 3D visualization & analysis | SlicerIDCBrowser | https://github.com/ImagingDataCommons/SlicerIDCBrowser |
 
 **Default choice:** Use `idc-index` for most tasks (no auth, easy API, batch downloads).
-
-### 9. Integration with Analysis Pipelines
-
-After downloading DICOM files, use `pydicom` to read individual files or build 3D numpy arrays sorted by `ImagePositionPatient`. For a more robust reader with automatic series sorting and ITK image output, use `SimpleITK.ImageSeriesReader`.
-
-See `references/use_cases.md` (Use Case 6) for code examples reading DICOM with pydicom, building 3D CT volumes, and integrating with SimpleITK.
-
-## Common Use Cases
-
-See `references/use_cases.md` for complete end-to-end workflow examples including:
-- Building deep learning training datasets from lung CT scans
-- Comparing image quality across scanner manufacturers
-- Previewing data in browser before downloading
-- License-aware batch downloads for commercial use
 
 ## Best Practices
 
@@ -720,35 +691,7 @@ See `references/sql_patterns.md` for quick-reference SQL patterns including:
 
 For segmentation and annotation details, also see `references/digital_pathology_guide.md`.
 
-## Related Skills
-
-The following skills complement IDC workflows for downstream analysis and visualization:
-
-### DICOM Processing
-- **pydicom** - Read, write, and manipulate downloaded DICOM files. Use for extracting pixel data, reading metadata, anonymization, and format conversion. Essential for working with IDC radiology data (CT, MR, PET).
-
-### Pathology and Slide Microscopy
-See `references/digital_pathology_guide.md` for DICOM-compatible tools (highdicom, wsidicom, TIA-Toolbox, Slim viewer).
-
-### Metadata Visualization
-- **matplotlib** - Low-level plotting for full customization. Use for creating static figures summarizing IDC query results (bar charts of modalities, histograms of series counts, etc.).
-- **seaborn** - Statistical visualization with pandas integration. Use for quick exploration of IDC metadata distributions, relationships between variables, and categorical comparisons with attractive defaults.
-- **plotly** - Interactive visualization. Use when you need hover info, zoom, and pan for exploring IDC metadata, or for creating web-embeddable dashboards of collection statistics.
-
-### Data Exploration
-- **exploratory-data-analysis** - Comprehensive EDA on scientific data files. Use after downloading IDC data to understand file structure, quality, and characteristics before analysis.
-
 ## Resources
-
-### Schema Reference (Primary Source)
-
-**Always use `client.indices_overview` for current column schemas.** This ensures accuracy with the installed idc-index version:
-
-```python
-# Get all column names and types for any table
-schema = client.indices_overview["index"]["schema"]
-columns = [(c['name'], c['type'], c.get('description', '')) for c in schema['columns']]
-```
 
 ### Reference Documentation
 
