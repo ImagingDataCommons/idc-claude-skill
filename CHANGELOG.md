@@ -5,6 +5,14 @@ All notable changes to the IDC Claude Skill are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.3] - 2026-05-08
+
+### Changed
+
+- Clarified `download_from_selection` API: added explicit warning that it takes filter keyword arguments (not a DataFrame), comparison table vs `download_dicom_series` (which has a different first-argument order), and restructured the download example as a step-by-step query → extract UIDs → pass list flow
+- Documented `download_dicom_series` as an alternative download method with its own signature (`seriesInstanceUID` as first arg, then `downloadDir`)
+- Reduced redundancy and duplication in SKILL.md for cleaner reading
+
 ## [1.6.2] - 2026-05-08
 
 ### Changed
