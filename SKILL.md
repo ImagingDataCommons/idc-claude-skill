@@ -363,7 +363,16 @@ results = client.sql_query("""
 
 ### 3. Downloading DICOM Files
 
-Download imaging data efficiently from IDC's cloud storage:
+Download imaging data efficiently from IDC's cloud storage.
+
+**IMPORTANT — two download methods with different signatures:**
+
+| Method | First arg | Second arg | Use when |
+|--------|-----------|------------|----------|
+| `download_from_selection` | `downloadDir` (required) | filter kwargs (optional) | Filtering by collection, patient, study, or series |
+| `download_dicom_series` | `seriesInstanceUID` (required) | `downloadDir` (required) | Downloading specific series by UID only |
+
+**`download_from_selection` takes filter keyword arguments, NOT a DataFrame.** The name "from_selection" refers to filtering the IDC index by criteria — not accepting a pandas DataFrame. To download the results of a query, extract UIDs from the DataFrame and pass them as a list.
 
 **Download entire collection:**
 ```python
@@ -372,15 +381,16 @@ from idc_index import IDCClient
 client = IDCClient()
 
 # Download small collection (RIDER Pilot ~1GB)
+# downloadDir is the FIRST positional argument
 client.download_from_selection(
-    collection_id="rider_pilot",
-    downloadDir="./data/rider"
+    downloadDir="./data/rider",
+    collection_id="rider_pilot"
 )
 ```
 
-**Download specific series:**
+**Download specific series (from a query result):**
 ```python
-# First, query for series UIDs
+# Step 1: Query for series UIDs
 series_df = client.sql_query("""
     SELECT SeriesInstanceUID
     FROM index
@@ -390,10 +400,26 @@ series_df = client.sql_query("""
     LIMIT 5
 """)
 
-# Download only those series
+# Step 2: Extract UIDs as a list from the DataFrame
+uids = list(series_df['SeriesInstanceUID'].values)
+
+# Step 3: Pass the list to download_from_selection (NOT the DataFrame itself)
 client.download_from_selection(
-    seriesInstanceUID=list(series_df['SeriesInstanceUID'].values),
+    downloadDir="./data/lung_ct",
+    seriesInstanceUID=uids       # list of strings, not a DataFrame
+)
+
+# Alternative: download_dicom_series has seriesInstanceUID as FIRST arg (different order!)
+client.download_dicom_series(
+    seriesInstanceUID=uids,      # FIRST arg here
     downloadDir="./data/lung_ct"
+)
+
+# Download from Google Storage instead of AWS
+client.download_from_selection(
+    downloadDir="./data/lung_ct",
+    seriesInstanceUID=uids,
+    source_bucket_location="gcs"
 )
 ```
 
@@ -404,16 +430,16 @@ Default `dirTemplate`: `%collection_id/%PatientID/%StudyInstanceUID/%Modality_%S
 ```python
 # Simplified hierarchy (omit StudyInstanceUID level)
 client.download_from_selection(
-    collection_id="tcga_luad",
     downloadDir="./data",
+    collection_id="tcga_luad",
     dirTemplate="%collection_id/%PatientID/%Modality"
 )
 # Results in: ./data/tcga_luad/TCGA-05-4244/CT/
 
 # Flat structure (all files in one directory)
 client.download_from_selection(
-    seriesInstanceUID=list(series_df['SeriesInstanceUID'].values),
     downloadDir="./data/flat",
+    seriesInstanceUID=list(series_df['SeriesInstanceUID'].values),
     dirTemplate=""
 )
 # Results in: ./data/flat/*.dcm
@@ -689,7 +715,7 @@ See `references/sql_patterns.md` for quick-reference SQL patterns including:
 - Download size estimation
 - Clinical data linking
 
-For segmentation and annotation details, also see `references/digital_pathology_guide.md`.
+For digital pathology related see `references/digital_pathology_guide.md`.
 
 ## Resources
 
