@@ -4,9 +4,9 @@ This document provides technical instructions for integrating the IDC Claude ski
 
 ## Claude.ai Web Interface
 
-### Upload Repository as ZIP
+### Upload Release ZIP
 
-1. Download this repository as a ZIP file (Code → Download ZIP on GitHub)
+1. Download the latest release ZIP from the [Releases page](https://github.com/ImagingDataCommons/idc-claude-skill/releases/latest)
 2. Start a new conversation at [claude.ai](https://claude.ai)
 3. Click the attachment icon and upload the ZIP file
 4. Claude will have access to all skill content including reference guides
@@ -49,7 +49,7 @@ If you're using [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (t
 The simplest way to install this skill using the [Skills.sh](https://skills.sh/) framework:
 
 ```bash
-npx skills add https://github.com/imagingdatacommons/idc-claude-skill --skill imaging-data-commons
+npx skills add ImagingDataCommons/idc-claude-skill
 ```
 
 This command will automatically detect all AI agents on your system and offer to install the skill across all of them, making it available system-wide. Once installed, invoke with `/imaging-data-commons` or let your AI assistant auto-detect based on questions about IDC.
@@ -81,15 +81,25 @@ This makes the skill available only when working in that project.
 
 ### Option 4: Import During Session
 
-For one-time use, read the skill files directly:
+For one-time use without permanent installation, ask Claude to read the skill file at the start of your session:
+
 ```
-/read /path/to/idc-claude-skill/SKILL.md
+Please read /path/to/idc-claude-skill/SKILL.md and use it for IDC queries.
 ```
 
-For BigQuery or DICOMweb features, also read the reference guides:
+Ask Claude to load reference guides as needed for specific topics:
+
 ```
-/read /path/to/idc-claude-skill/references/bigquery_guide.md
-/read /path/to/idc-claude-skill/references/dicomweb_guide.md
+Please also read /path/to/idc-claude-skill/references/bigquery_guide.md      # BigQuery advanced queries
+Please also read /path/to/idc-claude-skill/references/dicomweb_guide.md      # DICOMweb API access
+Please also read /path/to/idc-claude-skill/references/index_tables_guide.md  # Table schemas and join columns
+Please also read /path/to/idc-claude-skill/references/sql_patterns.md        # Quick-reference SQL patterns
+Please also read /path/to/idc-claude-skill/references/use_cases.md           # End-to-end workflow examples
+Please also read /path/to/idc-claude-skill/references/digital_pathology_guide.md  # Pathology (SM, ANN, SEG)
+Please also read /path/to/idc-claude-skill/references/clinical_data_guide.md # Clinical/tabular data
+Please also read /path/to/idc-claude-skill/references/cloud_storage_guide.md # Direct GCS/S3 access
+Please also read /path/to/idc-claude-skill/references/cli_guide.md           # idc-index CLI tools
+Please also read /path/to/idc-claude-skill/references/parquet_access_guide.md # Direct Parquet queries
 ```
 
 ### Verifying Installation
@@ -106,7 +116,7 @@ Or invoke directly:
 
 ## Claude API Setup
 
-If you're using the Claude API directly, include the contents of `SKILL.md` in your system prompt. For BigQuery or DICOMweb features, also include the relevant reference guides.
+If you're using the Claude API directly, include the contents of `SKILL.md` in your system prompt. Include additional reference guides from [references/](references/) as needed for advanced features.
 
 ### Example with Anthropic API
 
@@ -117,14 +127,18 @@ from pathlib import Path
 # Read skill files
 skill_content = Path('SKILL.md').read_text()
 
-# Optionally include reference guides for advanced features
-# skill_content += "\n\n" + Path('references/bigquery_guide.md').read_text()
-# skill_content += "\n\n" + Path('references/dicomweb_guide.md').read_text()
+# Optionally include reference guides for advanced features:
+# skill_content += "\n\n" + Path('references/bigquery_guide.md').read_text()      # BigQuery queries
+# skill_content += "\n\n" + Path('references/dicomweb_guide.md').read_text()      # DICOMweb API
+# skill_content += "\n\n" + Path('references/index_tables_guide.md').read_text()  # Table schemas
+# skill_content += "\n\n" + Path('references/digital_pathology_guide.md').read_text()  # Pathology
+# skill_content += "\n\n" + Path('references/clinical_data_guide.md').read_text() # Clinical data
+# skill_content += "\n\n" + Path('references/cloud_storage_guide.md').read_text() # GCS/S3 access
 
 client = anthropic.Anthropic(api_key="your-api-key")
 
 message = client.messages.create(
-    model="claude-sonnet-4-20250514",
+    model="claude-sonnet-4-6",
     max_tokens=1024,
     system=skill_content,  # Include skill as system context
     messages=[
@@ -174,7 +188,7 @@ Claude: [Checks license and explains usage restrictions]
 ### Skill Not Loading
 
 - **Claude Code**: Verify the symlink exists at `~/.claude/skills/imaging-data-commons` and points to the correct directory
-- **ZIP attachment** (Claude.ai): Ensure the repository ZIP is attached to your conversation before asking IDC-related questions
+- **ZIP attachment** (Claude.ai): Ensure the release ZIP is attached to your conversation before asking IDC-related questions
 - **File size**: The ZIP file is large. If Claude seems unaware of IDC, the file may not have been fully loaded
 
 ### Skill Not Responding as Expected
@@ -198,6 +212,7 @@ Claude: [Checks license and explains usage restrictions]
 ## Resources
 
 - [SKILL.md](SKILL.md) - Comprehensive skill documentation
+- [references/](references/) - Reference guides (BigQuery, DICOMweb, SQL patterns, pathology, clinical data, cloud storage, CLI, Parquet)
 - [IDC Documentation](https://learn.canceridc.dev/)
 - [idc-index Package](https://pypi.org/project/idc-index/)
 - [IDC Portal](https://portal.imaging.datacommons.cancer.gov/)
