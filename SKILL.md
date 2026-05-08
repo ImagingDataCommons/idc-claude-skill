@@ -3,7 +3,7 @@ name: imaging-data-commons
 description: Query and download public cancer imaging data from NCI Imaging Data Commons using idc-index. Invoke for any question about IDC collections, cancer imaging datasets, DICOM data access, radiology (CT, MR, PET) or pathology AI training sets, metadata queries, visualization, or license checks — even when the user doesn't explicitly mention "IDC". No authentication required.
 license: This skill is provided under the MIT License. IDC data itself has individual licensing (mostly CC-BY, some CC-NC) that must be respected when using the data.
 metadata:
-    version: 1.6.1
+    version: 1.6.2
     skill-author: Andrey Fedorov, @fedorov
     idc-index: "0.12.2"
     idc-data-version: "v24"
@@ -128,25 +128,24 @@ The `idc-index` package provides multiple metadata index tables, accessible via 
 
 ### Available Tables
 
-| Table | Row Granularity | Loaded | Description |
-|-------|-----------------|--------|-------------|
-| `index` | 1 row = 1 DICOM series | Auto | Primary metadata for all current IDC data |
-| `prior_versions_index` | 1 row = 1 DICOM series | Auto | Series from previous IDC releases; for downloading deprecated data |
-| `collections_index` | 1 row = 1 collection | fetch_index() | Collection-level metadata and descriptions |
-| `analysis_results_index` | 1 row = 1 analysis result collection | fetch_index() | Metadata about derived datasets (annotations, segmentations) |
-| `clinical_index` | 1 row = 1 (collection, table, column) triple | fetch_index() | Dictionary mapping clinical data table columns to collections |
-| `sm_index` | 1 row = 1 slide microscopy series | fetch_index() | Slide Microscopy (pathology) series metadata |
-| `sm_instance_index` | 1 row = 1 slide microscopy instance | fetch_index() | Instance-level (SOPInstanceUID) metadata for slide microscopy |
-| `seg_index` | 1 row = 1 DICOM Segmentation series | fetch_index() | Segmentation metadata: algorithm, segment count, reference to source image series |
-| `ann_index` | 1 row = 1 DICOM ANN series | fetch_index() | Microscopy Bulk Simple Annotations series metadata; references annotated image series |
-| `ann_group_index` | 1 row = 1 annotation group | fetch_index() | Detailed annotation group metadata: graphic type, annotation count, property codes, algorithm |
-| `contrast_index` | 1 row = 1 series with contrast info | fetch_index() | Contrast agent metadata: agent name, ingredient, administration route (CT, MR, PT, XA, RF) |
-| `volume_geometry_index` | 1 row = 1 CT/MR/PT series | fetch_index() | 3D volume geometry validation for single-frame CT, MR, and PT series; boolean checks for orientation, spacing, dimensions, and slice positions; composite `regularly_spaced_3d_volume` flag |
-| `rtstruct_index` | 1 row = 1 RTSTRUCT series | fetch_index() | RT Structure Set metadata: total ROI count, ROI names, generation algorithms, interpreted types, and the referenced image series UID |
-| `version_metadata_index` | 1 row = 1 IDC release version | fetch_index() | IDC version release timestamps; join on `idc_version` to correlate series with their release date |
+Always call `client.fetch_index("table_name")` before querying any index table — it is safe and idempotent for all tables, including those loaded automatically at startup.
 
-**Auto** = loaded automatically when `IDCClient()` is instantiated
-**fetch_index()** = requires `client.fetch_index("table_name")` to load
+| Table | Row Granularity | Description |
+|-------|-----------------|-------------|
+| `index` | 1 row = 1 DICOM series | Primary metadata for all current IDC data |
+| `version_metadata_index` | 1 row = 1 IDC release version | IDC version release timestamps; join on `idc_version` to correlate series with their release date |
+| `collections_index` | 1 row = 1 collection | Collection-level metadata and descriptions |
+| `analysis_results_index` | 1 row = 1 analysis result collection | Metadata about derived datasets (annotations, segmentations) |
+| `clinical_index` | 1 row = 1 (collection, table, column) triple | Dictionary mapping clinical data table columns to collections |
+| `sm_index` | 1 row = 1 slide microscopy series | Slide Microscopy (pathology) series metadata |
+| `sm_instance_index` | 1 row = 1 slide microscopy instance | Instance-level (SOPInstanceUID) metadata for slide microscopy |
+| `seg_index` | 1 row = 1 DICOM Segmentation series | Segmentation metadata: algorithm, segment count, reference to source image series |
+| `ann_index` | 1 row = 1 DICOM ANN series | Microscopy Bulk Simple Annotations series metadata; references annotated image series |
+| `ann_group_index` | 1 row = 1 annotation group | Detailed annotation group metadata: graphic type, annotation count, property codes, algorithm |
+| `contrast_index` | 1 row = 1 series with contrast info | Contrast agent metadata: agent name, ingredient, administration route (CT, MR, PT, XA, RF) |
+| `volume_geometry_index` | 1 row = 1 CT/MR/PT series | 3D volume geometry validation for single-frame CT, MR, and PT series; boolean checks for orientation, spacing, dimensions, and slice positions; composite `regularly_spaced_3d_volume` flag |
+| `rtstruct_index` | 1 row = 1 RTSTRUCT series | RT Structure Set metadata: total ROI count, ROI names, generation algorithms, interpreted types, and the referenced image series UID |
+| `prior_versions_index` | 1 row = 1 DICOM series | Series that have been removed or superseded in previous IDC releases; use only to download deprecated/historical data — do not query for current data |
 
 ### Joining Tables
 
@@ -666,17 +665,15 @@ See `references/use_cases.md` for complete end-to-end workflow examples includin
 
 ## Best Practices
 
+- **Never use web search for IDC data content questions** - Always query the idc-index directly using `client.sql_query()`. Web sources (release notes, blog posts, documentation pages) are frequently out of date and will produce incorrect answers. The local DuckDB index is the authoritative source; use it even when web search is available.
 - **Verify IDC version before generating responses** - Always call `client.get_idc_version()` at the start of a session to confirm you're using the expected data version (currently v24). If using an older version, recommend `pip install --upgrade idc-index`
 - **Check licenses before use** - Always query the `license_short_name` field and respect licensing terms (CC BY vs CC BY-NC)
 - **Generate citations for attribution** - Use `citations_from_selection()` to get properly formatted citations from `source_DOI` values; include these in publications
 - **Start with small queries** - Use `LIMIT` clause when exploring to avoid long downloads and understand data structure
 - **Use mini-index for simple queries** - Only use BigQuery when you need comprehensive metadata or complex JOINs
 - **Organize downloads with dirTemplate** - Use meaningful directory structures like `%collection_id/%PatientID/%Modality`
-- **Cache query results** - Save DataFrames to CSV files to avoid re-querying and ensure reproducibility
 - **Estimate size first** - Check collection size before downloading - some collection sizes are in terabytes!
 - **Save manifests** - Always save query results with Series UIDs for reproducibility and data provenance
-- **Read documentation** - IDC data structure and metadata fields are documented at https://learn.canceridc.dev/
-- **Use IDC forum** - Search for questons/answers and ask your questions to the IDC maintainers and users at https://discourse.canceridc.dev/
 
 ## Troubleshooting
 

@@ -5,6 +5,15 @@ All notable changes to the IDC Claude Skill are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.2] - 2026-05-08
+
+### Changed
+
+- Moved `version_metadata_index` to second position in Available Tables (right after `index`) to surface it alongside the primary index
+- Moved `prior_versions_index` to last position in Available Tables; updated description to clarify it contains only removed/superseded series and should not be queried for current data
+- Added explicit Best Practices rule prohibiting web search for IDC data content questions; idc-index DuckDB queries are always authoritative — web sources are stale
+- Removed "Loaded" column from Available Tables and replaced with an unconditional rule: always call `client.fetch_index("table_name")` before querying any table; `fetch_index()` is idempotent for all tables including auto-loaded ones, so no exceptions are needed
+
 ## [1.6.1] - 2026-05-08
 
 ### Added
