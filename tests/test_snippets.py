@@ -42,6 +42,7 @@ def client_with_all_indices(client):
         "contrast_index",
         "volume_geometry_index",
         "rtstruct_index",
+        "version_metadata_index",
     ]:
         client.fetch_index(table)
     return client
@@ -55,13 +56,49 @@ class TestVersionAndSetup:
     """SKILL.md: version check and IDC data version."""
 
     def test_package_version_meets_requirement(self):
-        required = "0.12.1"
+        required = "0.12.2"
         assert idc_index.__version__ >= required, (
             f"idc-index {idc_index.__version__} < required {required}"
         )
 
     def test_idc_data_version_is_v24(self, client):
         assert client.get_idc_version() == "v24"
+
+    def test_series_version_columns_present(self, client):
+        cols = client.index.columns.tolist()
+        assert "series_init_idc_version" in cols
+        assert "series_revised_idc_version" in cols
+
+    def test_version_metadata_index_available(self, client):
+        assert "version_metadata_index" in client.indices_overview
+        assert client.indices_overview["version_metadata_index"]["installed"]
+
+    def test_version_metadata_index_query(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query(
+            "SELECT idc_version, version_timestamp FROM version_metadata_index ORDER BY idc_version"
+        )
+        assert len(df) > 0
+        assert "idc_version" in df.columns
+        assert "version_timestamp" in df.columns
+
+    def test_series_version_columns_query(self, client):
+        df = client.sql_query("""
+            SELECT SeriesInstanceUID, series_init_idc_version, series_revised_idc_version
+            FROM index
+            WHERE series_init_idc_version IS NOT NULL
+            LIMIT 10
+        """)
+        assert len(df) > 0
+
+    def test_join_index_with_version_metadata(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT i.SeriesInstanceUID, i.series_init_idc_version, v.version_timestamp
+            FROM index i
+            JOIN version_metadata_index v ON i.series_init_idc_version = v.idc_version
+            LIMIT 5
+        """)
+        assert len(df) > 0
+        assert "version_timestamp" in df.columns
 
 
 # ===========================================================================
@@ -123,6 +160,13 @@ class TestDataDiscovery:
             FROM analysis_results_index
         """)
         assert len(df) > 0
+
+    def test_analysis_results_index_column_names(self, client_with_all_indices):
+        cols = client_with_all_indices.analysis_results_index.columns.tolist()
+        for expected in ("updated", "description"):
+            assert expected in cols, f"Expected lowercase column '{expected}' in analysis_results_index"
+        assert "Updated" not in cols
+        assert "Description" not in cols
 
 
 # ===========================================================================

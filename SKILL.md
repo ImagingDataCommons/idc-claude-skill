@@ -3,9 +3,9 @@ name: imaging-data-commons
 description: Query and download public cancer imaging data from NCI Imaging Data Commons using idc-index. Invoke for any question about IDC collections, cancer imaging datasets, DICOM data access, radiology (CT, MR, PET) or pathology AI training sets, metadata queries, visualization, or license checks — even when the user doesn't explicitly mention "IDC". No authentication required.
 license: This skill is provided under the MIT License. IDC data itself has individual licensing (mostly CC-BY, some CC-NC) that must be respected when using the data.
 metadata:
-    version: 1.6.0
+    version: 1.6.1
     skill-author: Andrey Fedorov, @fedorov
-    idc-index: "0.12.1"
+    idc-index: "0.12.2"
     idc-data-version: "v24"
     repository: https://github.com/ImagingDataCommons/idc-claude-skill
 ---
@@ -27,7 +27,7 @@ Use the `idc-index` Python package to query and download public cancer imaging d
 ```python
 import idc_index
 
-REQUIRED_VERSION = "0.12.1"  # Must match metadata.idc-index in this file
+REQUIRED_VERSION = "0.12.2"  # Must match metadata.idc-index in this file
 installed = idc_index.__version__
 
 if installed < REQUIRED_VERSION:
@@ -143,6 +143,7 @@ The `idc-index` package provides multiple metadata index tables, accessible via 
 | `contrast_index` | 1 row = 1 series with contrast info | fetch_index() | Contrast agent metadata: agent name, ingredient, administration route (CT, MR, PT, XA, RF) |
 | `volume_geometry_index` | 1 row = 1 CT/MR/PT series | fetch_index() | 3D volume geometry validation for single-frame CT, MR, and PT series; boolean checks for orientation, spacing, dimensions, and slice positions; composite `regularly_spaced_3d_volume` flag |
 | `rtstruct_index` | 1 row = 1 RTSTRUCT series | fetch_index() | RT Structure Set metadata: total ROI count, ROI names, generation algorithms, interpreted types, and the referenced image series UID |
+| `version_metadata_index` | 1 row = 1 IDC release version | fetch_index() | IDC version release timestamps; join on `idc_version` to correlate series with their release date |
 
 **Auto** = loaded automatically when `IDCClient()` is instantiated
 **fetch_index()** = requires `client.fetch_index("table_name")` to load
@@ -167,7 +168,7 @@ The `idc-index` package provides multiple metadata index tables, accessible via 
 | `SeriesInstanceUID` | index, volume_geometry_index | Link series to its 3D geometry validation result (join index.SeriesInstanceUID = volume_geometry_index.SeriesInstanceUID) |
 | `SeriesInstanceUID` / `referenced_SeriesInstanceUID` | index, rtstruct_index | Join RTSTRUCT series to its metadata (index.SeriesInstanceUID = rtstruct_index.SeriesInstanceUID); use rtstruct_index.referenced_SeriesInstanceUID to find the source image series |
 
-**Note:** `Subjects`, `Updated`, and `Description` appear in multiple tables but have different meanings (counts vs identifiers, different update contexts).
+**Note:** `subjects`, `updated`, and `description` appear in multiple tables but have different meanings (counts vs identifiers, different update contexts).
 
 For detailed join examples, schema discovery patterns, key columns reference, and DataFrame access, see `references/index_tables_guide.md`.
 
@@ -243,7 +244,7 @@ print(client.get_idc_version())  # Should return "v24"
 ```
 If you see an older version, upgrade with: `pip install --upgrade idc-index`
 
-**Tested with:** idc-index 0.12.1 (IDC data version v24)
+**Tested with:** idc-index 0.12.2 (IDC data version v24)
 
 **Optional (for data analysis):**
 ```bash
@@ -366,6 +367,7 @@ results = client.sql_query("""
 - Clinical: PatientAge, PatientSex, StudyDate
 - Descriptions: StudyDescription, SeriesDescription
 - Licensing: license_short_name
+- Versioning: series_init_idc_version (IDC version when series was first added), series_revised_idc_version (IDC version when series was last revised)
 
 **Note:** Cancer type is in `collections_index.cancer_types`, not in the primary `index` table.
 
