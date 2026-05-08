@@ -5,6 +5,19 @@ All notable changes to the IDC Claude Skill are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.1] - 2026-05-08
+
+### Added
+
+- `series_init_idc_version` and `series_revised_idc_version` columns in primary `index` table (idc-index-data 24.1.0): expose the IDC version when each series was first added and last revised, enabling version-aware filtering
+- `version_metadata_index` table: maps each IDC version number to its release timestamp; requires `client.fetch_index("version_metadata_index")`
+- Tests for new index columns and `version_metadata_index` (61 total, up from 55)
+
+### Changed
+
+- Updated to idc-index 0.12.2 (idc-index-data 24.1.0); IDC data version remains v24
+- `analysis_results_index` column renames (idc-index-data 24.1.0): `Updated` → `updated`, `Description` → `description`
+
 ## [1.6.0] - 2026-05-07
 
 ### Added
