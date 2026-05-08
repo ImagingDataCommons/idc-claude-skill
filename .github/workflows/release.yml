@@ -30,7 +30,6 @@ jobs:
         run: |
           zip -r imaging-data-commons-${{ steps.version.outputs.version }}.zip \
             SKILL.md \
-            CHANGELOG.md \
             references/
 
       - name: Create GitHub Release
