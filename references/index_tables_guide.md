@@ -1,6 +1,6 @@
 # Index Tables Guide for IDC
 
-**Tested with:** idc-index 0.12.2 (IDC data version v24)
+**Tested with:** idc-index 0.12.3 (IDC data version v24)
 
 This guide covers the structure and access patterns for IDC index tables: programmatic schema discovery, DataFrame access, and join column references. For the overview of available tables and their purposes, see the "Index Tables" section in the main SKILL.md.
 
@@ -130,6 +130,9 @@ Use this table to identify join columns between index tables. Always call `clien
 | `index` | `volume_geometry_index` | `index.SeriesInstanceUID = volume_geometry_index.SeriesInstanceUID` |
 | `index` | `rtstruct_index` | `index.SeriesInstanceUID = rtstruct_index.SeriesInstanceUID` |
 | `rtstruct_index` | `index` (source images) | `rtstruct_index.referenced_SeriesInstanceUID = index.SeriesInstanceUID` |
+| `index` | `ct_index` | `index.SeriesInstanceUID = ct_index.SeriesInstanceUID` |
+| `index` | `mr_index` | `index.SeriesInstanceUID = mr_index.SeriesInstanceUID` |
+| `index` | `pt_index` | `index.SeriesInstanceUID = pt_index.SeriesInstanceUID` |
 
 For complete query examples using these joins, see `references/sql_patterns.md`.
 

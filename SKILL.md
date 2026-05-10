@@ -5,7 +5,7 @@ license: This skill is provided under the MIT License. IDC data itself has indiv
 metadata:
     version: 1.6.3
     skill-author: Andrey Fedorov, @fedorov
-    idc-index: "0.12.2"
+    idc-index: "0.12.3"
     idc-data-version: "v24"
     repository: https://github.com/ImagingDataCommons/idc-claude-skill
 ---
@@ -145,6 +145,9 @@ Always call `client.fetch_index("table_name")` before querying any index table â
 | `contrast_index` | 1 row = 1 series with contrast info | Contrast agent metadata: agent name, ingredient, administration route (CT, MR, PT, XA, RF) |
 | `volume_geometry_index` | 1 row = 1 CT/MR/PT series | 3D volume geometry validation for single-frame CT, MR, and PT series; boolean checks for orientation, spacing, dimensions, and slice positions; composite `regularly_spaced_3d_volume` flag |
 | `rtstruct_index` | 1 row = 1 RTSTRUCT series | RT Structure Set metadata: total ROI count, ROI names, generation algorithms, interpreted types, and the referenced image series UID |
+| `ct_index` | 1 row = 1 CT series | CT acquisition/reconstruction parameters: pixel spacing, slice thickness, kVp, convolution kernel, tube current (min/max for dose-modulated), exposure, spiral pitch, scan options |
+| `mr_index` | 1 row = 1 MR series | MR acquisition/sequence parameters: field strength, scanning sequence, TE (array for multi-echo), TR, flip angle, DiffusionBValue (array for DWI), pixel bandwidth, receive coil, number of temporal positions |
+| `pt_index` | 1 row = 1 PET series | PET acquisition/reconstruction/radiopharmaceutical parameters: series type, units, decay/scatter/attenuation correction, reconstruction method, radionuclide, injected dose, frame duration (array for dynamic PET) |
 | `prior_versions_index` | 1 row = 1 DICOM series | Series that have been removed or superseded in previous IDC releases; use only to download deprecated/historical data â€” do not query for current data |
 
 ### Joining Tables
@@ -165,6 +168,9 @@ Always call `client.fetch_index("table_name")` before querying any index table â
 | `segmented_SeriesInstanceUID` | seg_index â†’ index | Link segmentation to its source image series (join seg_index.segmented_SeriesInstanceUID = index.SeriesInstanceUID) |
 | `referenced_SeriesInstanceUID` | ann_index â†’ index | Link annotation to its source image series (join ann_index.referenced_SeriesInstanceUID = index.SeriesInstanceUID) |
 | `SeriesInstanceUID` / `referenced_SeriesInstanceUID` | index, rtstruct_index | Join RTSTRUCT series to its metadata (index.SeriesInstanceUID = rtstruct_index.SeriesInstanceUID); use rtstruct_index.referenced_SeriesInstanceUID to find the source image series |
+| `SeriesInstanceUID` | index, ct_index | Link CT series to acquisition/reconstruction parameters |
+| `SeriesInstanceUID` | index, mr_index | Link MR series to sequence/acquisition parameters |
+| `SeriesInstanceUID` | index, pt_index | Link PET series to acquisition/radiopharmaceutical parameters |
 
 **Note:** `subjects`, `updated`, and `description` appear in multiple tables but have different meanings (counts vs identifiers, different update contexts).
 
