@@ -5,6 +5,27 @@ All notable changes to the IDC Claude Skill are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.3] - 2026-05-09
+
+### Added
+
+- `ct_index`, `mr_index`, `pt_index` tables (idc-index 0.12.3 / idc-index-data 24.2.0): modality-specific acquisition and reconstruction parameter indices, one row per series, all joining on `SeriesInstanceUID`
+  - `ct_index` (21 columns): pixel spacing, slice thickness, kVp, convolution kernel, tube current min/max (dose-modulated), exposure, spiral pitch, scan options
+  - `mr_index` (22 columns): field strength, scanning sequence, TE (array for multi-echo), TR, flip angle, DiffusionBValue (array for DWI), pixel bandwidth, receive coil, number of temporal positions
+  - `pt_index` (21 columns): radionuclide, injected dose, reconstruction method, decay/scatter/attenuation correction, frame duration (array for dynamic PET), number of time slices
+- SQL query patterns for all three new tables in `references/sql_patterns.md`
+- Join column entries for `ct_index`, `mr_index`, `pt_index` in `references/index_tables_guide.md` and SKILL.md
+- Parquet file entries for `ct_index.parquet`, `mr_index.parquet`, `pt_index.parquet` in `references/parquet_access_guide.md`
+
+### Changed
+
+- Added concrete `indices_overview` code example showing how to search for a column across all tables and read column schemas without fetching the table; directly addresses the failure mode where agents query `index` for modality-specific parameters (SliceThickness, KVP, etc.) instead of using `ct_index`/`mr_index`/`pt_index`
+- Added troubleshooting entry "Column not found in `index` table" with a working `indices_overview` search snippet and join example, covering common acquisition/reconstruction parameters that live in the modality-specific index tables
+- Updated idc-index reference to 0.12.3
+- Clarified `download_from_selection` API: added explicit warning that it takes filter keyword arguments (not a DataFrame), comparison table vs `download_dicom_series` (which has a different first-argument order), and restructured the download example as a step-by-step query → extract UIDs → pass list flow
+- Documented `download_dicom_series` as an alternative download method with its own signature (`seriesInstanceUID` as first arg, then `downloadDir`)
+- Reduced redundancy and duplication in SKILL.md for cleaner reading
+
 ## [1.6.2] - 2026-05-08
 
 ### Changed
