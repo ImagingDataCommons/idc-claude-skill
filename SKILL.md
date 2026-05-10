@@ -126,6 +126,25 @@ The `idc-index` package provides multiple metadata index tables, accessible via 
 
 **Important:** Use `client.indices_overview` to get current table descriptions and column schemas. This is the authoritative source for available columns and their types — always query it when writing SQL or exploring data structure.
 
+```python
+from idc_index import IDCClient
+
+client = IDCClient()
+
+# Find which table(s) contain a specific column (no fetch required)
+target = "SliceThickness"
+for table_name, info in client.indices_overview.items():
+    if any(c["name"] == target for c in info["schema"]["columns"]):
+        print(f"'{target}' is in: {table_name}")
+# → 'SliceThickness' is in: ct_index
+
+# List all columns in a table from the schema (no fetch required)
+ct_cols = [c["name"] for c in client.indices_overview["ct_index"]["schema"]["columns"]]
+print("ct_index columns:", ct_cols)
+# → ['SeriesInstanceUID', 'PixelSpacing_row_mm', 'PixelSpacing_col_mm', 'Rows',
+#    'Columns', 'SliceThickness', 'KVP', 'ConvolutionKernel', ...]
+```
+
 ### Available Tables
 
 Always call `client.fetch_index("table_name")` before querying any index table — it is safe and idempotent for all tables, including those loaded automatically at startup.
@@ -702,6 +721,25 @@ See `references/bigquery_guide.md` for schemas, column descriptions, and query e
   - Check if data is in current IDC version (some old data may be deprecated)
   - Use `LIMIT 5` to test query first
   - Check field names against metadata schema documentation
+
+**Issue: Column not found in `index` table (e.g., `SliceThickness`, `PixelSpacing`, `KVP`, `EchoTime`, `InjectedDose`)**
+- **Cause:** The `index` table contains series-level metadata only; modality-specific acquisition and reconstruction parameters live in dedicated tables (`ct_index`, `mr_index`, `pt_index`)
+- **Solution:** Search `client.indices_overview` to find the right table, then fetch and join on `SeriesInstanceUID`:
+  ```python
+  target = "SliceThickness"
+  for table_name, info in client.indices_overview.items():
+      if any(c["name"] == target for c in info["schema"]["columns"]):
+          print(f"Found in: {table_name}")
+  # → Found in: ct_index
+
+  client.fetch_index("ct_index")
+  result = client.sql_query("""
+      SELECT i.SeriesInstanceUID, i.Modality, c.SliceThickness, c.KVP, c.PixelSpacing_row_mm
+      FROM index i
+      JOIN ct_index c USING (SeriesInstanceUID)
+      WHERE i.collection_id = 'your_collection'
+  """)
+  ```
 
 **Issue: Downloaded DICOM files won't open**
 - **Cause:** Corrupted download or incompatible viewer

@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Added concrete `indices_overview` code example showing how to search for a column across all tables and read column schemas without fetching the table; directly addresses the failure mode where agents query `index` for modality-specific parameters (SliceThickness, KVP, etc.) instead of using `ct_index`/`mr_index`/`pt_index`
+- Added troubleshooting entry "Column not found in `index` table" with a working `indices_overview` search snippet and join example, covering common acquisition/reconstruction parameters that live in the modality-specific index tables
 - Updated idc-index reference to 0.12.3
 - Clarified `download_from_selection` API: added explicit warning that it takes filter keyword arguments (not a DataFrame), comparison table vs `download_dicom_series` (which has a different first-argument order), and restructured the download example as a step-by-step query → extract UIDs → pass list flow
 - Documented `download_dicom_series` as an alternative download method with its own signature (`seriesInstanceUID` as first arg, then `downloadDir`)
