@@ -4,14 +4,13 @@ This document provides technical instructions for integrating the IDC Claude ski
 
 ## Claude.ai Web Interface
 
-### Upload Release ZIP
+### Install the skill
 
 1. Download the latest release ZIP from the [Releases page](https://github.com/ImagingDataCommons/idc-claude-skill/releases/latest)
-2. Start a new conversation at [claude.ai](https://claude.ai)
-3. Click the attachment icon and upload the ZIP file
-4. Claude will have access to all skill content including reference guides
+2. Open Claude Customize settings https://claude.ai/customize, select "Skills" and upload the `imaging-data-commons` skill ZIP file.
+   - <img width="871" height="292" alt="2026-05-18_12-37-57" src="https://github.com/user-attachments/assets/e12a94dc-6d7f-402f-a7e6-b1c6b9cf869d" />
 
-This gives Claude the complete skill with all documentation in one upload.
+This gives Claude the complete skill with all the reference guides in one upload.
 
 ### Settings > Capabilities
 
