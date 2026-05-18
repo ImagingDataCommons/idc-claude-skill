@@ -18,15 +18,13 @@ This gives Claude the complete skill with all documentation in one upload.
 To enable web browsing and allow Claude to access IDC resources directly, configure the Capabilities settings:
 
 1. Go to **Settings > Capabilities** in Claude.ai
-2. Enable the following options:
-   - **Web search** — allows Claude to look up live IDC data and documentation
-3. Under **Allowed domains**, add the following:
-   - `*.github.com`
-   - `*.githubusercontent.com`
-   - `*.googleapis.com`
-   - `storage.googleapis.com`
-
-These domains allow Claude to access the skill files from GitHub and IDC data from Google Cloud Storage.
+2. Under **Code execution and file creation**:
+   - Enable "Allow network egress" so that Claude can install `idc-index` package and its components
+   - Under "Domain whitelist" select "Package managers only" so that `idc-index` package can be pulled from PyPI
+3. Under **Additional allowed domains** add the following:
+     * `*.github.com` and `*.githubusercontent.com`: used to access source code and release artifacts
+     * `*.googleapis.com`: used to fetch IDC data from Google Storage buckets
+     * `*.s3.amazonaws.com`: used to fetch IDC data from Amazon S3 buckets
 
 ## Claude Desktop Setup
 
