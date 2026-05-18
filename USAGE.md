@@ -12,9 +12,7 @@ This document provides technical instructions for integrating the IDC Claude ski
 
 This gives Claude the complete skill with all the reference guides in one upload.
 
-### Settings > Capabilities
-
-To enable web browsing and allow Claude to access IDC resources directly, configure the Capabilities settings:
+### Configure settings
 
 1. Go to **Settings > Capabilities** in Claude.ai
 2. Under **Code execution and file creation**:
@@ -24,6 +22,9 @@ To enable web browsing and allow Claude to access IDC resources directly, config
      * `*.github.com` and `*.githubusercontent.com`: used to access source code and release artifacts
      * `*.googleapis.com`: used to fetch IDC data from Google Storage buckets
      * `*.s3.amazonaws.com`: used to fetch IDC data from Amazon S3 buckets
+
+<img width="899" height="648" alt="image" src="https://github.com/user-attachments/assets/5bcb2d6f-9b9b-4c9e-955f-839cb4a98ca3" />
+
 
 ## Claude Desktop Setup
 
