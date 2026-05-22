@@ -3,7 +3,7 @@ name: imaging-data-commons
 description: Query and download public cancer imaging data from NCI Imaging Data Commons using idc-index. Invoke for any question about IDC collections, cancer imaging datasets, DICOM data access, radiology (CT, MR, PET) or pathology AI training sets, metadata queries, visualization, or license checks — even when the user doesn't explicitly mention "IDC". No authentication required.
 license: This skill is provided under the MIT License. IDC data itself has individual licensing (mostly CC-BY, some CC-NC) that must be respected when using the data.
 metadata:
-    version: 1.6.3
+    version: 1.6.4
     skill-author: Andrey Fedorov, @fedorov
     idc-index: "0.12.3"
     idc-data-version: "v24"
@@ -81,7 +81,6 @@ print(stats)
 **Core Sections (inline):**
 - IDC Data Model - Collection and analysis result hierarchy
 - Index Tables - Available tables and joining patterns
-- Installation - Package setup and version verification
 - Core Capabilities - Essential API patterns (query, download, visualize, license, citations)
 - Best Practices - Usage guidelines
 - Troubleshooting - Common issues and solutions
@@ -167,31 +166,23 @@ Always call `client.fetch_index("table_name")` before querying any index table �
 | `ct_index` | 1 row = 1 CT series | CT acquisition/reconstruction parameters: pixel spacing, slice thickness, kVp, convolution kernel, tube current (min/max for dose-modulated), exposure, spiral pitch, scan options |
 | `mr_index` | 1 row = 1 MR series | MR acquisition/sequence parameters: field strength, scanning sequence, TE (array for multi-echo), TR, flip angle, DiffusionBValue (array for DWI), pixel bandwidth, receive coil, number of temporal positions |
 | `pt_index` | 1 row = 1 PET series | PET acquisition/reconstruction/radiopharmaceutical parameters: series type, units, decay/scatter/attenuation correction, reconstruction method, radionuclide, injected dose, frame duration (array for dynamic PET) |
-| `prior_versions_index` | 1 row = 1 DICOM series | Series that have been removed or superseded in previous IDC releases; use only to download deprecated/historical data — do not query for current data |
+| `prior_versions_index` | 1 row = 1 DICOM series | **Reproducibility only.** Contains series permanently removed from IDC (all `max_idc_version` < current version; zero overlap with `index`). Use ONLY when a user explicitly needs to reproduce work from a prior IDC version using data no longer in the current release. Do NOT use for version history or "what's new" questions — those use `series_init_idc_version`/`series_revised_idc_version` in the main `index` table. Column names `min_idc_version`/`max_idc_version` here are NOT equivalent to `series_init_idc_version`/`series_revised_idc_version` in `index`. |
 
 ### Joining Tables
 
-**Key columns are not explicitly labeled, the following is a subset that can be used in joins.**
+**`SeriesInstanceUID` is the universal join key** for all series-level specialized tables: `sm_index`, `sm_instance_index`, `seg_index`, `ann_index`, `ann_group_index`, `contrast_index`, `volume_geometry_index`, `rtstruct_index`, `ct_index`, `mr_index`, `pt_index`. Always join these to `index` on `SeriesInstanceUID`. The exceptions below use different column names.
 
 | Join Column | Tables | Use Case |
 |-------------|--------|----------|
 | `collection_id` | index, prior_versions_index, collections_index, clinical_index | Link series to collection metadata or clinical data |
-| `SeriesInstanceUID` | index, prior_versions_index, sm_index, sm_instance_index | Link series across tables; connect to slide microscopy details |
-| `StudyInstanceUID` | index, prior_versions_index | Link studies across current and historical data |
-| `PatientID` | index, prior_versions_index | Link patients across current and historical data |
 | `analysis_result_id` | index, analysis_results_index | Link series to analysis result metadata (annotations, segmentations) |
 | `source_DOI` | index, analysis_results_index | Link by publication DOI |
-| `crdc_series_uuid` | index, prior_versions_index | Link by CRDC unique identifier |
-| `Modality` | index, prior_versions_index | Filter by imaging modality |
-| `SeriesInstanceUID` | index, seg_index, ann_index, ann_group_index, contrast_index, volume_geometry_index | Link series to seg/ann/contrast/geometry index tables |
-| `segmented_SeriesInstanceUID` | seg_index → index | Link segmentation to its source image series (join seg_index.segmented_SeriesInstanceUID = index.SeriesInstanceUID) |
-| `referenced_SeriesInstanceUID` | ann_index → index | Link annotation to its source image series (join ann_index.referenced_SeriesInstanceUID = index.SeriesInstanceUID) |
-| `SeriesInstanceUID` / `referenced_SeriesInstanceUID` | index, rtstruct_index | Join RTSTRUCT series to its metadata (index.SeriesInstanceUID = rtstruct_index.SeriesInstanceUID); use rtstruct_index.referenced_SeriesInstanceUID to find the source image series |
-| `SeriesInstanceUID` | index, ct_index | Link CT series to acquisition/reconstruction parameters |
-| `SeriesInstanceUID` | index, mr_index | Link MR series to sequence/acquisition parameters |
-| `SeriesInstanceUID` | index, pt_index | Link PET series to acquisition/radiopharmaceutical parameters |
+| `segmented_SeriesInstanceUID` | seg_index → index | Link segmentation to its source image series (`seg_index.segmented_SeriesInstanceUID = index.SeriesInstanceUID`) |
+| `referenced_SeriesInstanceUID` | ann_index → index, rtstruct_index → index | Link annotation or RTSTRUCT to its source image series |
 
 **Note:** `subjects`, `updated`, and `description` appear in multiple tables but have different meanings (counts vs identifiers, different update contexts).
+
+**Note on `prior_versions_index`:** Joining `prior_versions_index` with `index` on `SeriesInstanceUID` always returns zero rows — there is no overlap. This table is for historical reproducibility only; never join it with `index` to answer questions about current data or version history.
 
 For detailed join examples, schema discovery patterns, key columns reference, and DataFrame access, see `references/index_tables_guide.md`.
 
@@ -251,21 +242,6 @@ See `references/dicomweb_guide.md` for endpoint URLs, code examples, supported o
 All idc-index metadata tables are published as Parquet files to a public GCS bucket (`idc-index-data-artifacts`) with unrestricted CORS. This enables DuckDB or pandas queries without installing idc-index, including cross-table joins and queries against `volume_geometry_index` and `rtstruct_index`.
 
 See `references/parquet_access_guide.md` for URL patterns, available files, and DuckDB query examples.
-
-## Installation and Setup
-
-**Required (for basic access):**
-```bash
-pip install --upgrade idc-index
-```
-
-**Important:** New IDC data release will always trigger a new version of `idc-index`. Always use `--upgrade` flag while installing, unless an older version is needed for reproducibility.
-
-**Optional (for data analysis):**
-```bash
-# Tested with: pandas>=1.5, numpy>=1.23, pydicom>=2.3
-pip install pandas numpy pydicom
-```
 
 ## Core Capabilities
 
@@ -385,6 +361,55 @@ results = client.sql_query("""
 - Versioning: series_init_idc_version (IDC version when series was first added), series_revised_idc_version (IDC version when series was last revised)
 
 **Note:** Cancer type is in `collections_index.cancer_types`, not in the primary `index` table.
+
+**Version tracking — "what's new in IDC vX?"**
+
+Use `series_init_idc_version` and `series_revised_idc_version` in the main `index` table. Do NOT use `prior_versions_index` for this — it contains only removed series.
+
+```python
+from idc_index import IDCClient
+client = IDCClient()
+
+VERSION = 24  # Replace with target version
+
+# Series added for the first time in vVERSION
+new_series = client.sql_query(f"""
+    SELECT collection_id,
+           COUNT(DISTINCT SeriesInstanceUID) as new_series,
+           ROUND(SUM(series_size_MB)/1000, 2) as size_GB
+    FROM index
+    WHERE series_init_idc_version = {VERSION}
+    GROUP BY collection_id
+    ORDER BY new_series DESC
+""")
+
+# Series revised (updated content) in vVERSION but originally added earlier
+revised_series = client.sql_query(f"""
+    SELECT collection_id,
+           COUNT(DISTINCT SeriesInstanceUID) as revised_series
+    FROM index
+    WHERE series_revised_idc_version = {VERSION}
+      AND series_init_idc_version < {VERSION}
+    GROUP BY collection_id
+    ORDER BY revised_series DESC
+""")
+
+# When was each collection first added to IDC?
+client.fetch_index("version_metadata_index")
+first_appearance = client.sql_query("""
+    WITH first_versions AS (
+        SELECT collection_id, MIN(series_init_idc_version) as first_version
+        FROM index
+        GROUP BY collection_id
+    )
+    SELECT f.collection_id, f.first_version, v.version_timestamp as first_release_date
+    FROM first_versions f
+    JOIN version_metadata_index v ON f.first_version = v.idc_version
+    ORDER BY f.first_version DESC
+""")
+```
+
+To verify column names and descriptions before writing queries, use `client.get_index_schema('index')` or `client.indices_overview` — see Best Practices.
 
 ### 3. Downloading DICOM Files
 
@@ -687,6 +712,7 @@ See `references/bigquery_guide.md` for schemas, column descriptions, and query e
 
 ## Best Practices
 
+- **Check schema before writing queries** — Use `client.get_index_schema('index')` (reads cached metadata, no SQL executed) or `client.indices_overview` to see all available columns and their descriptions. The version-tracking columns `series_init_idc_version` and `series_revised_idc_version` in the main `index` table directly answer "what's new / when was this added" questions without touching `prior_versions_index`.
 - **Never use web search for IDC data content questions** - Always query the idc-index directly using `client.sql_query()`. Web sources (release notes, blog posts, documentation pages) are frequently out of date and will produce incorrect answers. The local DuckDB index is the authoritative source; use it even when web search is available.
 - **Verify IDC version before generating responses** - Always call `client.get_idc_version()` at the start of a session to confirm you're using the expected data version (currently v24). If using an older version, recommend `pip install --upgrade idc-index`
 - **Check licenses before use** - Always query the `license_short_name` field and respect licensing terms (CC BY vs CC BY-NC)
@@ -701,7 +727,7 @@ See `references/bigquery_guide.md` for schemas, column descriptions, and query e
 
 **Issue: `ModuleNotFoundError: No module named 'idc_index'`**
 - **Cause:** idc-index package not installed
-- **Solution:** Install with `pip install --upgrade idc-index`
+- **Solution:** Install with `pip install --upgrade idc-index`; for data analysis also install `pip install pandas numpy pydicom` (tested with pandas>=1.5, numpy>=1.23, pydicom>=2.3)
 
 **Issue: Download fails with connection timeout**
 - **Cause:** Network instability or large download size
