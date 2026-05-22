@@ -506,69 +506,14 @@ To identify files, use the `crdc_instance_uuid` column in queries or read DICOM 
 
 ### Command-Line Download
 
-The `idc download` command provides command-line access to download functionality without writing Python code. Available after installing `idc-index`.
-
-**Auto-detects input type:** manifest file path, or identifiers (collection_id, PatientID, StudyInstanceUID, SeriesInstanceUID, crdc_series_uuid).
+`idc download` is available after installing `idc-index`. Auto-detects input type: collection ID, series UID, or manifest file path.
 
 ```bash
-# Download entire collection
 idc download rider_pilot --download-dir ./data
-
-# Download specific series by UID
-idc download "1.3.6.1.4.1.9328.50.1.69736" --download-dir ./data
-
-# Download multiple items (comma-separated)
-idc download "tcga_luad,tcga_lusc" --download-dir ./data
-
-# Download from manifest file (auto-detected)
 idc download manifest.txt --download-dir ./data
 ```
 
-**Options:**
-
-| Option | Description |
-|--------|-------------|
-| `--download-dir` | Output directory (default: current directory) |
-| `--dir-template` | Directory hierarchy template (default: `%collection_id/%PatientID/%StudyInstanceUID/%Modality_%SeriesInstanceUID`) |
-| `--log-level` | Verbosity: debug, info, warning, error, critical |
-
-**Manifest files:**
-
-Manifest files contain S3 URLs (one per line) and can be:
-- Exported from the IDC Portal after cohort selection
-- Shared by collaborators for reproducible data access
-- Generated programmatically from query results
-
-Format (one S3 URL per line):
-```
-s3://idc-open-data/cb09464a-c5cc-4428-9339-d7fa87cfe837/*
-s3://idc-open-data/88f3990d-bdef-49cd-9b2b-4787767240f2/*
-```
-
-**Example: Generate manifest from Python query:**
-
-```python
-from idc_index import IDCClient
-
-client = IDCClient()
-
-# Query for series URLs
-results = client.sql_query("""
-    SELECT series_aws_url
-    FROM index
-    WHERE collection_id = 'rider_pilot' AND Modality = 'CT'
-""")
-
-# Save as manifest file
-with open('ct_manifest.txt', 'w') as f:
-    for url in results['series_aws_url']:
-        f.write(url + '\n')
-```
-
-Then download:
-```bash
-idc download ct_manifest.txt --download-dir ./ct_data
-```
+See `references/cli_guide.md` for full options, `idc download-from-manifest` (resume support), and `idc download-from-selection` (filter-based).
 
 ### 4. Visualizing IDC Images
 
