@@ -5,6 +5,15 @@ All notable changes to the IDC Claude Skill are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.4] - 2026-05-22
+
+### Changed
+
+- Added version tracking guidance: "what's new in vX" workflow using `series_init_idc_version`/`series_revised_idc_version` in `index`; clarified `prior_versions_index` is for reproducibility only (zero overlap with `index`, column names differ from main index version columns)
+- Collapsed five `SeriesInstanceUID` join rows into a single universal-key statement; table now covers only non-obvious join columns
+- Removed Installation and Setup section (duplicated the CRITICAL version-check block); folded optional deps into `ModuleNotFoundError` Troubleshooting entry
+- Trimmed "Command-Line Download" inline section from ~60 lines to 5; full CLI coverage (`download-from-manifest`, `download-from-selection`, all options) remains in `references/cli_guide.md`
+
 ## [1.6.3] - 2026-05-09
 
 ### Added
