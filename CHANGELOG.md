@@ -5,6 +5,23 @@ All notable changes to the IDC Claude Skill are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.5] - 2026-06-17
+
+### Added
+
+- `scripts/check_version.py` (run first): installs the pinned author-vetted `idc-index` minimum, then prints best-effort, notify-only notices when a newer `idc-index` (PyPI) or skill release (GitHub) is available — never auto-installs newer releases, silently skipped offline
+- "Keeping the Skill Up to Date" section in `USAGE.md` (release notifications, per-surface update steps, fresh-conversation reminder); linked from README
+
+### Changed
+
+- Replaced the inline startup version-check in `SKILL.md` with a prominent pointer to `scripts/check_version.py`, keeping the code out of the model's context
+- Renamed repository references `idc-claude-skill` → `imaging-data-commons-skill` across `SKILL.md`, `README.md`, `USAGE.md`
+- Pointed `tests/test_snippets.py` at the new script and added a guard that its `MIN_VERSION`/`SKILL_VERSION` match the SKILL.md frontmatter
+
+### Fixed
+
+- Standardized the required `idc-index` on `0.12.3` (was `0.12.2` in the version-check vs `0.12.3` in frontmatter) and switched to numeric, not string, version comparison
+
 ## [1.6.4] - 2026-05-22
 
 ### Changed
