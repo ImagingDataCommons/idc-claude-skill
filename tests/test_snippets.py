@@ -13,10 +13,19 @@ Excluded (require auth or network I/O beyond metadata):
 BigQuery snippets are covered separately in test_bq_snippets.py (uses bq CLI dry-run).
 """
 
+import os
+import re
+import sys
+
 import pandas as pd
 import pytest
 import idc_index
 from idc_index import IDCClient
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+import check_version  # noqa: E402
+
+_SKILL_MD = os.path.join(os.path.dirname(__file__), "..", "SKILL.md")
 
 
 # ---------------------------------------------------------------------------
@@ -55,11 +64,27 @@ def client_with_all_indices(client):
 class TestVersionAndSetup:
     """SKILL.md: version check and IDC data version."""
 
-    def test_package_version_meets_requirement(self):
-        required = "0.12.2"
-        assert idc_index.__version__ >= required, (
-            f"idc-index {idc_index.__version__} < required {required}"
-        )
+    def test_package_version_meets_minimum(self):
+        assert (
+            check_version.parse_version(idc_index.__version__)
+            >= check_version.parse_version(check_version.MIN_VERSION)
+        ), f"idc-index {idc_index.__version__} < pinned minimum {check_version.MIN_VERSION}"
+
+    def test_parse_version_orders_numerically(self):
+        # String comparison would (wrongly) order "0.12.0" < "0.9.0".
+        assert check_version.parse_version("0.12.0") > check_version.parse_version("0.9.0")
+        assert check_version.parse_version("v1.6.5") == (1, 6, 5)
+
+    def test_fetch_json_returns_none_when_unreachable(self):
+        assert check_version.fetch_json("https://pypi.org/pypi/_no_such_pkg_/json", "info") is None
+
+    def test_script_versions_match_skill_frontmatter(self):
+        with open(_SKILL_MD, encoding="utf-8") as fh:
+            front = fh.read().split("---", 2)[1]
+        idc_index_meta = re.search(r'idc-index:\s*"?([\d.]+)"?', front).group(1)
+        version_meta = re.search(r"version:\s*([\d.]+)", front).group(1)
+        assert check_version.MIN_VERSION == idc_index_meta
+        assert check_version.SKILL_VERSION == version_meta
 
     def test_idc_data_version_is_v24(self, client):
         assert client.get_idc_version() == "v24"

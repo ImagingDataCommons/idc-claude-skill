@@ -6,7 +6,7 @@ This document provides technical instructions for integrating the IDC Claude ski
 
 ### Install the skill
 
-1. Download the latest release ZIP from the [Releases page](https://github.com/ImagingDataCommons/idc-claude-skill/releases/latest)
+1. Download the latest release ZIP from the [Releases page](https://github.com/ImagingDataCommons/imaging-data-commons-skill/releases/latest)
 2. Open Claude Customize settings https://claude.ai/customize, select "Skills" and upload the `imaging-data-commons` skill ZIP file.
    - <img width="871" height="292" alt="2026-05-18_12-37-57" src="https://github.com/user-attachments/assets/e12a94dc-6d7f-402f-a7e6-b1c6b9cf869d" />
 
@@ -47,7 +47,7 @@ If you're using [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (t
 The simplest way to install this skill using the [Skills.sh](https://skills.sh/) framework:
 
 ```bash
-npx skills add ImagingDataCommons/idc-claude-skill
+npx skills add ImagingDataCommons/imaging-data-commons-skill
 ```
 
 This command will automatically detect all AI agents on your system and offer to install the skill across all of them, making it available system-wide. Once installed, invoke with `/imaging-data-commons` or let your AI assistant auto-detect based on questions about IDC.
@@ -58,10 +58,10 @@ Link or copy the skill to your personal skills directory. This makes it availabl
 
 ```bash
 # Create a symlink (keeps skill updated with repo)
-ln -s /path/to/idc-claude-skill ~/.claude/skills/imaging-data-commons
+ln -s /path/to/imaging-data-commons-skill ~/.claude/skills/imaging-data-commons
 
 # Or copy the entire directory
-cp -r /path/to/idc-claude-skill ~/.claude/skills/imaging-data-commons
+cp -r /path/to/imaging-data-commons-skill ~/.claude/skills/imaging-data-commons
 ```
 
 Once installed, invoke with `/imaging-data-commons` or let Claude auto-detect based on your questions about IDC.
@@ -72,7 +72,7 @@ For project-specific use, link to your project's `.claude/skills/` directory:
 
 ```bash
 mkdir -p /path/to/your-project/.claude/skills
-ln -s /path/to/idc-claude-skill /path/to/your-project/.claude/skills/imaging-data-commons
+ln -s /path/to/imaging-data-commons-skill /path/to/your-project/.claude/skills/imaging-data-commons
 ```
 
 This makes the skill available only when working in that project.
@@ -82,22 +82,22 @@ This makes the skill available only when working in that project.
 For one-time use without permanent installation, ask Claude to read the skill file at the start of your session:
 
 ```
-Please read /path/to/idc-claude-skill/SKILL.md and use it for IDC queries.
+Please read /path/to/imaging-data-commons-skill/SKILL.md and use it for IDC queries.
 ```
 
 Ask Claude to load reference guides as needed for specific topics:
 
 ```
-Please also read /path/to/idc-claude-skill/references/bigquery_guide.md      # BigQuery advanced queries
-Please also read /path/to/idc-claude-skill/references/dicomweb_guide.md      # DICOMweb API access
-Please also read /path/to/idc-claude-skill/references/index_tables_guide.md  # Table schemas and join columns
-Please also read /path/to/idc-claude-skill/references/sql_patterns.md        # Quick-reference SQL patterns
-Please also read /path/to/idc-claude-skill/references/use_cases.md           # End-to-end workflow examples
-Please also read /path/to/idc-claude-skill/references/digital_pathology_guide.md  # Pathology (SM, ANN, SEG)
-Please also read /path/to/idc-claude-skill/references/clinical_data_guide.md # Clinical/tabular data
-Please also read /path/to/idc-claude-skill/references/cloud_storage_guide.md # Direct GCS/S3 access
-Please also read /path/to/idc-claude-skill/references/cli_guide.md           # idc-index CLI tools
-Please also read /path/to/idc-claude-skill/references/parquet_access_guide.md # Direct Parquet queries
+Please also read /path/to/imaging-data-commons-skill/references/bigquery_guide.md      # BigQuery advanced queries
+Please also read /path/to/imaging-data-commons-skill/references/dicomweb_guide.md      # DICOMweb API access
+Please also read /path/to/imaging-data-commons-skill/references/index_tables_guide.md  # Table schemas and join columns
+Please also read /path/to/imaging-data-commons-skill/references/sql_patterns.md        # Quick-reference SQL patterns
+Please also read /path/to/imaging-data-commons-skill/references/use_cases.md           # End-to-end workflow examples
+Please also read /path/to/imaging-data-commons-skill/references/digital_pathology_guide.md  # Pathology (SM, ANN, SEG)
+Please also read /path/to/imaging-data-commons-skill/references/clinical_data_guide.md # Clinical/tabular data
+Please also read /path/to/imaging-data-commons-skill/references/cloud_storage_guide.md # Direct GCS/S3 access
+Please also read /path/to/imaging-data-commons-skill/references/cli_guide.md           # idc-index CLI tools
+Please also read /path/to/imaging-data-commons-skill/references/parquet_access_guide.md # Direct Parquet queries
 ```
 
 ### Verifying Installation
@@ -144,6 +144,36 @@ message = client.messages.create(
     ]
 )
 ```
+
+## Keeping the Skill Up to Date
+
+The skill is refined frequently, and IDC publishes periodic (roughly quarterly) data releases. A skill that was accurate against one IDC release can return stale answers once a newer one lands, so it is worth staying current.
+
+When network access is available, the skill checks at the start of a session and prints a notice if a newer `idc-index` package or a newer skill release is available. You can also subscribe to release notifications and update manually as described below.
+
+### Get notified of new releases
+
+The skill follows [Semantic Versioning](https://semver.org/) and publishes a GitHub Release for each update. On the [repository page](https://github.com/ImagingDataCommons/imaging-data-commons-skill), click **Watch → Custom → Releases** to be alerted whenever a new version is tagged. Skim the release notes first — they flag breaking changes, such as column renames or other schema changes.
+
+### Update the skill
+
+**claude.ai and Claude Desktop** — a custom skill is updated by replacing it:
+
+1. Download the latest release ZIP from the [Releases page](https://github.com/ImagingDataCommons/imaging-data-commons-skill/releases/latest).
+2. Confirm **Code execution and file creation** is enabled under **Settings > Capabilities**.
+3. At https://claude.ai/customize, select **Skills**, delete the existing `imaging-data-commons` skill (**···** → **Delete**), and upload the new ZIP.
+
+**Claude Code** — re-run the installer to pull the latest version:
+
+```bash
+npx skills add ImagingDataCommons/imaging-data-commons-skill
+```
+
+If you installed by symlinking a local clone (USAGE Options 2–3), just `git pull` in that clone — the symlink always reflects the latest checked-out version.
+
+### Start a fresh conversation after updating
+
+A skill loads into a conversation when Claude decides it is relevant, at the session level. Updating the skill in settings does **not** change a conversation already underway. After updating, **start a new conversation** so the new version is picked up.
 
 ## Example Workflows
 
@@ -193,7 +223,7 @@ Claude: [Checks license and explains usage restrictions]
 
 - **Verify skill is loaded**: Ask Claude "What do you know about the Imaging Data Commons?" — it should give a detailed response
 - **Be specific**: Use clear questions like "Find lung CT scans in IDC" rather than just "find scans"
-- **Report issues**: If the skill fails to answer expected questions, [open an issue](https://github.com/ImagingDataCommons/idc-claude-skill/issues/new/choose)
+- **Report issues**: If the skill fails to answer expected questions, [open an issue](https://github.com/ImagingDataCommons/imaging-data-commons-skill/issues/new/choose)
 
 ### Installation Commands Fail
 
@@ -218,6 +248,6 @@ Claude: [Checks license and explains usage restrictions]
 ## Support
 
 For questions about:
-- **The skill itself**: [Open a GitHub issue](https://github.com/ImagingDataCommons/idc-claude-skill/issues)
+- **The skill itself**: [Open a GitHub issue](https://github.com/ImagingDataCommons/imaging-data-commons-skill/issues)
 - **IDC data or platform**: [IDC Forum](https://discourse.canceridc.dev/)
 - **idc-index package**: [idc-index Issues](https://github.com/ImagingDataCommons/idc-index/issues)

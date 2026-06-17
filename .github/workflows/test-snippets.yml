@@ -33,7 +33,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.idc
-          key: idc-index-0.11.14
+          key: idc-index-0.12.3
 
       - name: Install test dependencies
         run: pip install -r tests/requirements-test.txt

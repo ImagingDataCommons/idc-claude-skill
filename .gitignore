@@ -11,3 +11,6 @@ uv.lock
 main.py
 
 __pycache__/
+
+# Locally built release packages
+*.zip

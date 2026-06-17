@@ -30,7 +30,8 @@ jobs:
         run: |
           zip -r imaging-data-commons-${{ steps.version.outputs.version }}.zip \
             SKILL.md \
-            references/
+            references/ \
+            scripts/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3

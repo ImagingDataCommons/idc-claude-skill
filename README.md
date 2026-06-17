@@ -21,7 +21,7 @@ Once the skill is loaded, you can ask questions like:
 
 ## Reporting Issues
 
-If the skill provides incorrect or incomplete answers, please [open an issue](https://github.com/ImagingDataCommons/idc-claude-skill/issues/new/choose) using our issue template.
+If the skill provides incorrect or incomplete answers, please [open an issue](https://github.com/ImagingDataCommons/imaging-data-commons-skill/issues/new/choose) using our issue template.
 
 ## Setup Instructions
 
@@ -33,7 +33,7 @@ This skill follows [Semantic Versioning](https://semver.org/).
 
 - **Requires:** [idc-index](https://github.com/ImagingDataCommons/idc-index)
 
-See [CHANGELOG.md](CHANGELOG.md) for version history and [Releases](https://github.com/ImagingDataCommons/idc-claude-skill/releases) for downloads.
+See [CHANGELOG.md](CHANGELOG.md) for version history and [Releases](https://github.com/ImagingDataCommons/imaging-data-commons-skill/releases) for downloads. For how to stay current with new releases and IDC data versions, see [Keeping the Skill Up to Date](USAGE.md#keeping-the-skill-up-to-date).
 
 ## Credits
 
