@@ -17,14 +17,22 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Validate CHANGELOG contains version
+      - name: Extract CHANGELOG entry for release notes
         run: |
-          if ! grep -q "\[${{ steps.version.outputs.version }}\]" CHANGELOG.md; then
-            echo "Error: CHANGELOG.md does not contain entry for version ${{ steps.version.outputs.version }}"
-            echo "Please add a section like: ## [${{ steps.version.outputs.version }}] - $(date +%Y-%m-%d)"
+          VERSION="${{ steps.version.outputs.version }}"
+          # Print the body of the "## [VERSION] - ..." section, up to the next "## [" heading.
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md | sed '/./,$!d' > release_notes.md
+          if [ ! -s release_notes.md ]; then
+            echo "Error: CHANGELOG.md does not contain an entry for version $VERSION"
+            echo "Please add a section like: ## [$VERSION] - $(date +%Y-%m-%d)"
             exit 1
           fi
-          echo "CHANGELOG.md contains version ${{ steps.version.outputs.version }}"
+          echo "Extracted release notes for $VERSION:"
+          cat release_notes.md
 
       - name: Create skill zip
         run: |
@@ -37,6 +45,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           name: v${{ steps.version.outputs.version }}
+          body_path: release_notes.md
           generate_release_notes: true
           files: imaging-data-commons-${{ steps.version.outputs.version }}.zip
         env:
