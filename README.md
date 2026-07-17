@@ -1,6 +1,6 @@
-# IDC Claude Skill
+# Imaging Data Commons Skill
 
-A Claude AI skill for querying and downloading public cancer imaging data from the National Cancer Institute's [Imaging Data Commons (IDC)](https://imaging.datacommons.cancer.gov/).
+An AI agent skill for querying and downloading public cancer imaging data from the National Cancer Institute's [Imaging Data Commons (IDC)](https://imaging.datacommons.cancer.gov/). The skill follows the open [Agent Skills](https://agentskills.io/) format and is not specific to any single AI assistant — it works with Claude (claude.ai, Claude Desktop, Claude Code, API) and any other agent that supports the skill format or can load the skill content into its context.
 
 ## What This Skill Does
 
@@ -25,7 +25,7 @@ If the skill provides incorrect or incomplete answers, please [open an issue](ht
 
 ## Setup Instructions
 
-See [USAGE.md](USAGE.md) for detailed instructions on loading this skill in Claude Desktop or via the API.
+See [USAGE.md](USAGE.md) for detailed instructions on loading this skill in your AI assistant environment (claude.ai, Claude Desktop, Claude Code, other agents, or via an LLM API).
 
 ## Versioning
 

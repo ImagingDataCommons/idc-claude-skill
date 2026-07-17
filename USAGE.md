@@ -1,6 +1,16 @@
 # Usage Instructions
 
-This document provides technical instructions for integrating the IDC Claude skill into your AI assistant environment.
+This document provides technical instructions for integrating the Imaging Data Commons skill into your AI assistant environment. The skill is not specific to any single vendor: it follows the open [Agent Skills](https://agentskills.io/) format, so it works with any agent that supports that format, and its content can be loaded as plain Markdown into any other assistant.
+
+## Quick Install for Coding Agents (Recommended)
+
+The simplest way to install this skill is with the [Skills.sh](https://skills.sh/) framework:
+
+```bash
+npx skills add ImagingDataCommons/imaging-data-commons-skill
+```
+
+This command automatically detects the AI agents installed on your system (Claude Code, Codex, Cursor, Gemini CLI, and others) and offers to install the skill across all of them, making it available system-wide. Once installed, invoke with `/imaging-data-commons` or let your AI assistant auto-detect based on questions about IDC.
 
 ## Claude.ai Web Interface
 
@@ -40,19 +50,9 @@ Claude should respond with specific information about IDC, the `idc-index` packa
 
 ## Claude Code Setup
 
-If you're using [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (the CLI tool), you can install the skill for persistent access.
+If you're using [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (the CLI tool), the `npx skills add` command above is the easiest option. Alternatively, install manually as described below. Other agents that support the Agent Skills format work the same way — just substitute their skills directory (e.g. `~/.claude/skills/` becomes the equivalent location for your agent).
 
-### Option 1: Install via npx (Recommended)
-
-The simplest way to install this skill using the [Skills.sh](https://skills.sh/) framework:
-
-```bash
-npx skills add ImagingDataCommons/imaging-data-commons-skill
-```
-
-This command will automatically detect all AI agents on your system and offer to install the skill across all of them, making it available system-wide. Once installed, invoke with `/imaging-data-commons` or let your AI assistant auto-detect based on questions about IDC.
-
-### Option 2: Install as Personal Skill
+### Option 1: Install as Personal Skill
 
 Link or copy the skill to your personal skills directory. This makes it available across all projects:
 
@@ -66,7 +66,7 @@ cp -r /path/to/imaging-data-commons-skill ~/.claude/skills/imaging-data-commons
 
 Once installed, invoke with `/imaging-data-commons` or let Claude auto-detect based on your questions about IDC.
 
-### Option 3: Install as Project Skill
+### Option 2: Install as Project Skill
 
 For project-specific use, link to your project's `.claude/skills/` directory:
 
@@ -77,15 +77,15 @@ ln -s /path/to/imaging-data-commons-skill /path/to/your-project/.claude/skills/i
 
 This makes the skill available only when working in that project.
 
-### Option 4: Import During Session
+### Option 3: Import During Session
 
-For one-time use without permanent installation, ask Claude to read the skill file at the start of your session:
+For one-time use without permanent installation, ask your assistant to read the skill file at the start of your session:
 
 ```
 Please read /path/to/imaging-data-commons-skill/SKILL.md and use it for IDC queries.
 ```
 
-Ask Claude to load reference guides as needed for specific topics:
+Ask your assistant to load reference guides as needed for specific topics:
 
 ```
 Please also read /path/to/imaging-data-commons-skill/references/bigquery_guide.md      # BigQuery advanced queries
@@ -102,7 +102,7 @@ Please also read /path/to/imaging-data-commons-skill/references/parquet_access_g
 
 ### Verifying Installation
 
-After installing, verify by asking Claude:
+After installing, verify by asking your assistant:
 ```
 What skills do you have for medical imaging data?
 ```
@@ -112,11 +112,11 @@ Or invoke directly:
 /imaging-data-commons
 ```
 
-## Claude API Setup
+## API Setup
 
-If you're using the Claude API directly, include the contents of `SKILL.md` in your system prompt. Include additional reference guides from [references/](references/) as needed for advanced features.
+If you're calling an LLM API directly (any provider), include the contents of `SKILL.md` in your system prompt. Include additional reference guides from [references/](references/) as needed for advanced features.
 
-### Example with Anthropic API
+### Example with the Anthropic API
 
 ```python
 import anthropic
@@ -163,17 +163,17 @@ The skill follows [Semantic Versioning](https://semver.org/) and publishes a Git
 2. Confirm **Code execution and file creation** is enabled under **Settings > Capabilities**.
 3. At https://claude.ai/customize, select **Skills**, delete the existing `imaging-data-commons` skill (**···** → **Delete**), and upload the new ZIP.
 
-**Claude Code** — re-run the installer to pull the latest version:
+**Claude Code and other coding agents** — re-run the installer to pull the latest version:
 
 ```bash
 npx skills add ImagingDataCommons/imaging-data-commons-skill
 ```
 
-If you installed by symlinking a local clone (USAGE Options 2–3), just `git pull` in that clone — the symlink always reflects the latest checked-out version.
+If you installed by symlinking a local clone (USAGE Options 1–2), just `git pull` in that clone — the symlink always reflects the latest checked-out version.
 
 ### Start a fresh conversation after updating
 
-A skill loads into a conversation when Claude decides it is relevant, at the session level. Updating the skill in settings does **not** change a conversation already underway. After updating, **start a new conversation** so the new version is picked up.
+A skill loads into a conversation when the assistant decides it is relevant, at the session level. Updating the skill in settings does **not** change a conversation already underway. After updating, **start a new conversation** so the new version is picked up.
 
 ## Example Workflows
 
@@ -181,29 +181,29 @@ A skill loads into a conversation when Claude decides it is relevant, at the ses
 
 ```
 User: "What collections in IDC have prostate MRI data?"
-Claude: [Uses skill to query and list relevant collections]
+Assistant: [Uses skill to query and list relevant collections]
 ```
 
 ### Download Dataset
 
 ```
 User: "Download all CT scans from the NSCLC-Radiomics collection"
-Claude: [Provides idc-index download command with proper parameters]
+Assistant: [Provides idc-index download command with proper parameters]
 ```
 
 ### License Checking
 
 ```
 User: "Can I use TCGA-BRCA data for commercial purposes?"
-Claude: [Checks license and explains usage restrictions]
+Assistant: [Checks license and explains usage restrictions]
 ```
 
 ## Limitations
 
 ### Command Execution
 
-- **Claude Desktop**: Can execute commands directly (e.g., installing `idc-index` with pip)
-- **Other AI Assistants**: May only provide guidance without executing commands. Users will need to manually run installation commands like `pip install idc-index`
+- **Assistants with code execution** (e.g., Claude Desktop, Claude Code, other coding agents): Can execute commands directly, such as installing `idc-index` with pip
+- **Assistants without code execution**: Can only provide guidance. Users will need to manually run installation commands like `pip install idc-index`
 
 ### Data Access
 
@@ -215,13 +215,13 @@ Claude: [Checks license and explains usage restrictions]
 
 ### Skill Not Loading
 
-- **Claude Code**: Verify the symlink exists at `~/.claude/skills/imaging-data-commons` and points to the correct directory
+- **Claude Code and other coding agents**: Verify the symlink exists in the agent's skills directory (e.g., `~/.claude/skills/imaging-data-commons`) and points to the correct location
 - **ZIP attachment** (Claude.ai): Ensure the release ZIP is attached to your conversation before asking IDC-related questions
-- **File size**: The ZIP file is large. If Claude seems unaware of IDC, the file may not have been fully loaded
+- **File size**: The ZIP file is large. If the assistant seems unaware of IDC, the file may not have been fully loaded
 
 ### Skill Not Responding as Expected
 
-- **Verify skill is loaded**: Ask Claude "What do you know about the Imaging Data Commons?" — it should give a detailed response
+- **Verify skill is loaded**: Ask your assistant "What do you know about the Imaging Data Commons?" — it should give a detailed response
 - **Be specific**: Use clear questions like "Find lung CT scans in IDC" rather than just "find scans"
 - **Report issues**: If the skill fails to answer expected questions, [open an issue](https://github.com/ImagingDataCommons/imaging-data-commons-skill/issues/new/choose)
 

@@ -1,5 +1,5 @@
 """
-Regression tests for all queries and code snippets documented in the IDC Claude Skill.
+Regression tests for all queries and code snippets documented in the Imaging Data Commons Skill.
 
 Covers: SKILL.md, references/sql_patterns.md, references/index_tables_guide.md,
         references/clinical_data_guide.md
