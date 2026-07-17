@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report an issue with the IDC Claude skill!
+        Thanks for taking the time to report an issue with the Imaging Data Commons skill!
         
         Please provide as much detail as possible to help us understand and fix the problem.
 
@@ -14,7 +14,7 @@ body:
     id: question-asked
     attributes:
       label: Question Asked
-      description: What question did you ask Claude (with the IDC skill loaded)?
+      description: What question did you ask your AI assistant (with the IDC skill loaded)?
       placeholder: "Example: Find all CT scans of lung cancer with commercial-use licenses"
     validations:
       required: true
@@ -43,7 +43,7 @@ body:
       label: Additional Context
       description: |
         Add any other context about the problem here:
-        - Which AI assistant are you using? (Claude Desktop, API, other)
+        - Which AI assistant are you using? (claude.ai, Claude Desktop, Claude Code, another agent, direct API)
         - Have similar questions worked in the past?
         - Any error messages or unusual behavior?
       placeholder: "Any additional details that might help..."
@@ -56,7 +56,7 @@ body:
       label: Pre-submission Checklist
       description: Please confirm the following before submitting
       options:
-        - label: I have verified the skill is properly loaded (Claude confirms it has access to IDC information)
+        - label: I have verified the skill is properly loaded (the assistant confirms it has access to IDC information)
           required: true
         - label: I have checked existing issues to avoid duplicates
           required: true

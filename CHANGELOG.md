@@ -1,9 +1,17 @@
 # Changelog
 
-All notable changes to the IDC Claude Skill are documented in this file.
+All notable changes to the Imaging Data Commons Skill are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+### Changed
+
+- Repository renamed from `idc-claude-skill` to `imaging-data-commons-skill` on GitHub to reflect that the skill is not specific to Claude
+- Made `README.md`, `USAGE.md`, `CHANGELOG.md`, the issue template, and test docstrings vendor-neutral: the skill is described as an Agent Skills–format skill usable with any compatible AI assistant; Claude-specific setup instructions remain as one supported environment
+- Promoted the `npx skills add` cross-agent installation to the top of `USAGE.md`; renamed "Claude API Setup" to "API Setup"
 
 ## [1.6.5] - 2026-06-17
 
