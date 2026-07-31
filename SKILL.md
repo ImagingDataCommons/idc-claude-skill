@@ -20,10 +20,14 @@ Use the `idc-index` Python package to query and download public cancer imaging d
 
 **Current IDC Data Version: v24** (always verify with `IDCClient().get_idc_version()`)
 
-**Primary tool:** `idc-index` ([GitHub](https://github.com/imagingdatacommons/idc-index))
+**Primary tool:** `idc-index` ([GitHub](https://github.com/imagingdatacommons/idc-index)) — the
+default path, always available.
 
-**CRITICAL - run this FIRST**, before any IDC query that uses `idc-index` (if this session
-already has the hosted IDC MCP server, read *IDC MCP Server* below first):
+**First, check your session:** if it already has the hosted IDC MCP server, route discovery and
+metadata there and skip the setup below — see *IDC MCP Server*. Return here for downloads and
+local analysis. Otherwise continue straight through.
+
+**CRITICAL - run this FIRST**, before any IDC query that uses `idc-index`:
 
 ```bash
 python scripts/check_version.py

@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Moved the MCP-vs-`idc-index` routing decision into the `SKILL.md` Overview, next to "Primary tool", so a session that already has the MCP server can skip the `idc-index` setup instead of discovering the alternative only after running it; `idc-index` remains the primary, always-available path and the version-check step is unconditional again
 - Repository renamed from `idc-claude-skill` to `imaging-data-commons-skill` on GitHub to reflect that the skill is not specific to Claude
 - Made `README.md`, `USAGE.md`, `CHANGELOG.md`, the issue template, and test docstrings vendor-neutral: the skill is described as an Agent Skills–format skill usable with any compatible AI assistant; Claude-specific setup instructions remain as one supported environment
 - Promoted the `npx skills add` cross-agent installation to the top of `USAGE.md`; renamed "Claude API Setup" to "API Setup"
