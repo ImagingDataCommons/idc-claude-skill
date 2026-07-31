@@ -65,7 +65,12 @@ def client_with_all_indices(client):
 # ===========================================================================
 
 class TestVersionAndSetup:
-    """SKILL.md: version check and IDC data version."""
+    """SKILL.md: version check and IDC data version.
+
+    The version-tracking columns and the version_metadata_index join are
+    described under "Querying Metadata with SQL" in SKILL.md; the full
+    "what's new in vX" queries live in sql_patterns.md.
+    """
 
     def test_package_version_meets_minimum(self):
         assert (
@@ -183,7 +188,7 @@ class TestOverallStats:
 # ===========================================================================
 
 class TestDataDiscovery:
-    """SKILL.md: §1 Data Discovery and Exploration."""
+    """SKILL.md: Data Discovery and Exploration."""
 
     def test_collections_summary(self, client):
         df = client.sql_query("""
@@ -226,7 +231,7 @@ class TestDataDiscovery:
 # ===========================================================================
 
 class TestSQLQueries:
-    """SKILL.md: §2 Querying Metadata with SQL."""
+    """SKILL.md: Querying Metadata with SQL."""
 
     def test_modalities_with_counts(self, client):
         df = client.sql_query("""
@@ -238,6 +243,8 @@ class TestSQLQueries:
         assert len(df) > 0
         assert "CT" in df["Modality"].tolist()
 
+    # SKILL.md describes narrowing a filter-value query by another column in
+    # prose and defers the variants to sql_patterns.md; this covers that claim.
     def test_body_parts_for_mr(self, client):
         df = client.sql_query("""
             SELECT DISTINCT BodyPartExamined, COUNT(*) as series_count
@@ -276,7 +283,7 @@ class TestSQLQueries:
 # ===========================================================================
 
 class TestLicensesAndCitations:
-    """SKILL.md: §5 Licenses and citations."""
+    """SKILL.md: Understanding and Checking Licenses; Generating Citations."""
 
     def test_license_query(self, client):
         df = client.sql_query("""
@@ -317,7 +324,8 @@ class TestLicensesAndCitations:
 # ===========================================================================
 
 class TestBatchAndManifest:
-    """SKILL.md: §6 Batch Processing; Command-Line Download / manifest."""
+    """Batch selection (use_cases.md) and manifest generation (SKILL.md:
+    Command-Line Download, cli_guide.md)."""
 
     def test_batch_filter_query(self, client):
         df = client.sql_query("""
@@ -346,7 +354,7 @@ class TestBatchAndManifest:
 # ===========================================================================
 
 class TestViewerURLs:
-    """SKILL.md: §4 Visualizing IDC Images."""
+    """SKILL.md: Visualizing IDC Images."""
 
     @pytest.fixture(scope="class")
     def rider_pilot_row(self, client):
