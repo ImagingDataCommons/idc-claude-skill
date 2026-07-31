@@ -3,9 +3,9 @@ name: imaging-data-commons
 description: Query and download public cancer imaging data from NCI Imaging Data Commons using idc-index. Invoke for any question about IDC collections, cancer imaging datasets, DICOM data access, radiology (CT, MR, PET) or pathology AI training sets, metadata queries, visualization, or license checks — even when the user doesn't explicitly mention "IDC". No authentication required.
 license: This skill is provided under the MIT License. IDC data itself has individual licensing (mostly CC-BY, some CC-NC) that must be respected when using the data.
 metadata:
-    version: 1.6.5
+    version: 1.7.0
     skill-author: Andrey Fedorov, @fedorov
-    idc-index: "0.12.3"
+    idc-index: "0.12.5"
     idc-data-version: "v24"
     repository: https://github.com/ImagingDataCommons/imaging-data-commons-skill
 ---
@@ -33,10 +33,13 @@ local analysis. Otherwise continue straight through.
 python scripts/check_version.py
 ```
 
-It installs the pinned `idc-index` minimum if needed and prints a notice when a newer
-`idc-index` release (which may carry a newer IDC data version) or a newer skill version is
-available, along with the link to update. If it reports an upgrade, restart Python before
-continuing.
+It checks the installed `idc-index` against the pinned minimum and prints a notice when a
+newer `idc-index` release (which may carry a newer IDC data version) or a newer skill version
+is available, along with the link to update.
+
+The script never installs or upgrades anything itself. If the pinned minimum is missing it
+exits non-zero and prints the exact `pip install` command for the running interpreter — run
+that command, preferring a virtual environment, then restart Python before continuing.
 
 **Verify IDC data version and check current data scale:**
 

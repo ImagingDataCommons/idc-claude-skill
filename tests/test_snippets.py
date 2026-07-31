@@ -2,12 +2,14 @@
 Regression tests for all queries and code snippets documented in the Imaging Data Commons Skill.
 
 Covers: SKILL.md, references/sql_patterns.md, references/index_tables_guide.md,
-        references/clinical_data_guide.md
+        references/clinical_data_guide.md, references/use_cases.md,
+        references/digital_pathology_guide.md, references/parquet_access_guide.md
 
 Excluded (require auth or network I/O beyond metadata):
   - Actual DICOM downloads
   - DICOMweb endpoints
-  - Direct S3/GCS access
+  - Direct S3/GCS access to DICOM objects (the public Parquet metadata
+    artifacts used by parquet_access_guide.md are covered)
   - pydicom / SimpleITK integration (no downloaded files)
 
 BigQuery snippets are covered separately in test_bq_snippets.py (uses bq CLI dry-run).
@@ -17,6 +19,7 @@ import os
 import re
 import sys
 
+import duckdb
 import pandas as pd
 import pytest
 import idc_index
@@ -75,8 +78,32 @@ class TestVersionAndSetup:
         assert check_version.parse_version("0.12.0") > check_version.parse_version("0.9.0")
         assert check_version.parse_version("v1.6.5") == (1, 6, 5)
 
+    def test_parse_version_tolerates_prereleases(self):
+        # A pre-release tag upstream must not crash the startup check.
+        assert check_version.parse_version("0.13.0rc1") == (0, 13, 0)
+        assert check_version.parse_version("v1.7.0-beta") == (1, 7, 0)
+        assert check_version.parse_version("1.7") == (1, 7, 0)
+
     def test_fetch_json_returns_none_when_unreachable(self):
         assert check_version.fetch_json("https://pypi.org/pypi/_no_such_pkg_/json", "info") is None
+
+    def test_check_version_never_installs(self):
+        """The script reports and instructs; it must not mutate the environment.
+
+        Auto-installing into whatever interpreter `pip` happens to resolve to can
+        silently rewrite a user's global site-packages, so installation is left to
+        the caller.
+        """
+        with open(check_version.__file__, encoding="utf-8") as fh:
+            source = fh.read()
+        for forbidden in ("subprocess", "--break-system-packages", "pip3"):
+            assert forbidden not in source, f"check_version.py must not use {forbidden}"
+
+    def test_install_instructions_target_running_interpreter(self, capsys):
+        check_version.print_install_instructions(f"idc-index=={check_version.MIN_VERSION}")
+        out = capsys.readouterr().out
+        assert f"{sys.executable} -m pip install" in out
+        assert check_version.MIN_VERSION in out
 
     def test_script_versions_match_skill_frontmatter(self):
         with open(_SKILL_MD, encoding="utf-8") as fh:
@@ -719,3 +746,432 @@ class TestClinicalDataGuide:
         clinical_patients = set(nlst_canc["dicom_patient_id"].unique())
         overlap = imaging_patients & clinical_patients
         assert len(overlap) > 0
+
+
+# ===========================================================================
+# use_cases.md
+# ===========================================================================
+
+class TestUseCases:
+    """references/use_cases.md – end-to-end workflows.
+
+    Only the selection queries are covered: every use case ends in
+    download_from_selection() or pydicom/SimpleITK processing of downloaded
+    files, both excluded per the module docstring. Use Case 5's query is
+    identical to TestBatchAndManifest::test_batch_filter_query.
+    """
+
+    def test_uc1_nlst_lung_ct_training_set(self, client):
+        df = client.sql_query("""
+            SELECT PatientID, SeriesInstanceUID, SeriesDescription
+            FROM index
+            WHERE collection_id = 'nlst'
+              AND Modality = 'CT'
+              AND BodyPartExamined = 'CHEST'
+              AND license_short_name = 'CC BY 4.0'
+            ORDER BY PatientID
+            LIMIT 100
+        """)
+        assert len(df) == 100
+        assert df["PatientID"].nunique() > 0
+
+    @pytest.fixture(scope="class")
+    def brain_mr_manufacturers(self, client):
+        return client.sql_query("""
+            SELECT Manufacturer, ManufacturerModelName,
+                   COUNT(DISTINCT SeriesInstanceUID) as num_series,
+                   COUNT(DISTINCT PatientID) as num_patients
+            FROM index
+            WHERE Modality = 'MR' AND BodyPartExamined LIKE '%BRAIN%'
+            GROUP BY Manufacturer, ManufacturerModelName
+            HAVING num_series >= 10
+            ORDER BY num_series DESC
+        """)
+
+    def test_uc2_brain_mr_by_manufacturer(self, brain_mr_manufacturers):
+        assert len(brain_mr_manufacturers) > 0
+        assert (brain_mr_manufacturers["num_series"] >= 10).all()
+
+    def test_uc2_sample_per_manufacturer(self, client, brain_mr_manufacturers):
+        # The guide interpolates each row into a follow-up query.
+        row = brain_mr_manufacturers.iloc[0]
+        df = client.sql_query(f"""
+            SELECT SeriesInstanceUID
+            FROM index
+            WHERE Manufacturer = '{row['Manufacturer']}'
+              AND ManufacturerModelName = '{row['ManufacturerModelName']}'
+              AND Modality = 'MR'
+              AND BodyPartExamined LIKE '%BRAIN%'
+            LIMIT 5
+        """)
+        assert len(df) > 0
+
+    def test_uc3_preview_before_download(self, client):
+        df = client.sql_query("""
+            SELECT SeriesInstanceUID, PatientID, SeriesDescription
+            FROM index
+            WHERE collection_id = 'acrin_nsclc_fdg_pet' AND Modality = 'PT'
+            LIMIT 10
+        """)
+        assert len(df) > 0
+        url = client.get_viewer_URL(seriesInstanceUID=df.iloc[0]["SeriesInstanceUID"])
+        assert url.startswith("http")
+
+    def test_uc4_license_aware_selection(self, client):
+        df = client.sql_query("""
+            SELECT SeriesInstanceUID, collection_id, PatientID, Modality
+            FROM index
+            WHERE license_short_name LIKE 'CC BY%'
+              AND license_short_name NOT LIKE '%NC%'
+              AND Modality IN ('CT', 'MR')
+              AND BodyPartExamined IN ('CHEST', 'BRAIN', 'ABDOMEN')
+            LIMIT 200
+        """)
+        assert len(df) > 0
+        assert set(df["Modality"]) <= {"CT", "MR"}
+
+
+# ===========================================================================
+# digital_pathology_guide.md
+# ===========================================================================
+
+class TestDigitalPathologyGuide:
+    """references/digital_pathology_guide.md."""
+
+    def test_sm_metadata_by_collection(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT i.collection_id, COUNT(*) as slides,
+                   MIN(s.min_PixelSpacing_2sf) as min_resolution
+            FROM sm_index s
+            JOIN index i ON s.SeriesInstanceUID = i.SeriesInstanceUID
+            GROUP BY i.collection_id
+            ORDER BY slides DESC
+        """)
+        assert len(df) > 0
+
+    def test_sm_objective_lens_power(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT i.collection_id, i.PatientID, s.ObjectiveLensPower,
+                   s.min_PixelSpacing_2sf
+            FROM sm_index s
+            JOIN index i ON s.SeriesInstanceUID = i.SeriesInstanceUID
+            WHERE s.ObjectiveLensPower >= 40
+            ORDER BY s.min_PixelSpacing_2sf
+            LIMIT 20
+        """)
+        assert len(df) > 0
+
+    def test_sm_staining_array_filter(self, client_with_all_indices):
+        # Specimen preparation columns are arrays – array_to_string() + LIKE.
+        df = client_with_all_indices.sql_query("""
+            SELECT i.PatientID,
+                   s.staining_usingSubstance_CodeMeaning as staining,
+                   s.embeddingMedium_CodeMeaning as embedding,
+                   s.tissueFixative_CodeMeaning as fixative
+            FROM sm_index s
+            JOIN index i ON s.SeriesInstanceUID = i.SeriesInstanceUID
+            WHERE i.collection_id = 'tcga_brca'
+              AND array_to_string(s.staining_usingSubstance_CodeMeaning, ', ')
+                  LIKE '%hematoxylin%'
+            LIMIT 10
+        """)
+        assert len(df) > 0
+
+    def test_sm_embedding_medium_breakdown(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT i.collection_id, s.embeddingMedium_CodeMeaning as embedding,
+                   COUNT(*) as slide_count
+            FROM sm_index s
+            JOIN index i ON s.SeriesInstanceUID = i.SeriesInstanceUID
+            GROUP BY i.collection_id, embedding
+            ORDER BY i.collection_id, slide_count DESC
+        """)
+        assert len(df) > 0
+
+    def test_tissue_type_values(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT s.primaryAnatomicStructureModifier_CodeMeaning as tissue_type,
+                   COUNT(*) as slide_count
+            FROM sm_index s
+            WHERE s.primaryAnatomicStructureModifier_CodeMeaning IS NOT NULL
+            GROUP BY tissue_type
+            ORDER BY slide_count DESC
+        """)
+        assert "Neoplasm, Primary" in set(df["tissue_type"])
+
+    def test_tcga_brca_tissue_breakdown(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT s.primaryAnatomicStructureModifier_CodeMeaning as tissue_type,
+                   COUNT(*) as slide_count,
+                   COUNT(DISTINCT i.PatientID) as patient_count
+            FROM sm_index s
+            JOIN index i ON s.SeriesInstanceUID = i.SeriesInstanceUID
+            WHERE i.collection_id = 'tcga_brca'
+            GROUP BY tissue_type
+            ORDER BY slide_count DESC
+        """)
+        counts = dict(zip(df["tissue_type"], df["slide_count"]))
+        # The guide quotes these counts inline – fails if the data release moves them.
+        assert counts["Neoplasm, Primary"] == 2704
+        assert counts["Normal"] == 399
+
+    def test_tcga_barcode_sample_type(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT SUBSTRING(SPLIT_PART(s.ContainerIdentifier, '-', 4), 1, 2)
+                       as sample_type_code,
+                   s.primaryAnatomicStructureModifier_CodeMeaning as tissue_type,
+                   COUNT(*) as slide_count
+            FROM sm_index s
+            JOIN index i ON s.SeriesInstanceUID = i.SeriesInstanceUID
+            WHERE i.collection_id = 'tcga_brca'
+            GROUP BY sample_type_code, tissue_type
+            ORDER BY sample_type_code
+        """)
+        counts = dict(zip(df["sample_type_code"], df["slide_count"]))
+        # Guide: 01 -> 2704 tumor, 06 -> 8 metastatic (tissue_type NULL), 11 -> 399 normal.
+        assert counts == {"01": 2704, "06": 8, "11": 399}
+
+    def test_ann_series_discovery(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT a.SeriesInstanceUID as ann_series, a.AnnotationCoordinateType,
+                   a.referenced_SeriesInstanceUID as source_series
+            FROM ann_index a
+            LIMIT 10
+        """)
+        assert len(df) > 0
+
+    def test_ann_group_statistics(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT GraphicType, SUM(NumberOfAnnotations) as total_annotations,
+                   COUNT(*) as group_count
+            FROM ann_group_index
+            GROUP BY GraphicType
+            ORDER BY total_annotations DESC
+        """)
+        assert len(df) > 0
+
+    def test_ann_with_source_slide_context(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT i.collection_id, g.GraphicType,
+                   g.AnnotationPropertyType_CodeMeaning, g.AlgorithmName,
+                   g.NumberOfAnnotations
+            FROM ann_group_index g
+            JOIN ann_index a ON g.SeriesInstanceUID = a.SeriesInstanceUID
+            JOIN index i ON a.referenced_SeriesInstanceUID = i.SeriesInstanceUID
+            WHERE g.AlgorithmName IS NOT NULL
+            LIMIT 10
+        """)
+        assert len(df) > 0
+
+    def test_segmentations_on_slide_microscopy(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT seg.SeriesInstanceUID as seg_series, seg.AlgorithmName,
+                   seg.total_segments, src.collection_id,
+                   src.Modality as source_modality
+            FROM seg_index seg
+            JOIN index src ON seg.segmented_SeriesInstanceUID = src.SeriesInstanceUID
+            WHERE src.Modality = 'SM'
+            LIMIT 20
+        """)
+        assert len(df) > 0
+        assert set(df["source_modality"]) == {"SM"}
+
+    def test_pathology_analysis_results(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT ar.analysis_result_id, ar.analysis_result_title, ar.modalities,
+                   ar.subjects, ar.collections
+            FROM analysis_results_index ar
+            WHERE ar.modalities LIKE '%ANN%' OR ar.modalities LIKE '%SEG%'
+            ORDER BY ar.subjects DESC
+        """)
+        assert len(df) > 0
+
+    def test_derived_data_for_collection(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT i.analysis_result_id, i.PatientID,
+                   a.referenced_SeriesInstanceUID as source_slide,
+                   g.AnnotationGroupLabel, g.NumberOfAnnotations, g.AlgorithmName
+            FROM ann_group_index g
+            JOIN ann_index a ON g.SeriesInstanceUID = a.SeriesInstanceUID
+            JOIN index i ON a.SeriesInstanceUID = i.SeriesInstanceUID
+            WHERE i.collection_id = 'tcga_brca'
+            LIMIT 10
+        """)
+        assert len(df) > 0
+
+    def test_annotation_group_label_filter(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT g.SeriesInstanceUID, g.AnnotationGroupLabel, g.GraphicType,
+                   g.NumberOfAnnotations, g.AlgorithmName
+            FROM ann_group_index g
+            WHERE LOWER(g.AnnotationGroupLabel) LIKE '%blast%'
+            ORDER BY g.NumberOfAnnotations DESC
+        """)
+        assert len(df) > 0
+
+    def test_annotation_label_with_collection_context(self, client_with_all_indices):
+        # The guide uses 'your_collection_id'/'keyword' placeholders here.
+        df = client_with_all_indices.sql_query("""
+            SELECT i.collection_id, g.AnnotationGroupLabel, g.GraphicType,
+                   g.NumberOfAnnotations, g.AnnotationPropertyType_CodeMeaning
+            FROM ann_group_index g
+            JOIN ann_index a ON g.SeriesInstanceUID = a.SeriesInstanceUID
+            JOIN index i ON a.SeriesInstanceUID = i.SeriesInstanceUID
+            WHERE i.collection_id = 'tcga_brca'
+              AND LOWER(g.AnnotationGroupLabel) LIKE '%nucle%'
+            ORDER BY g.NumberOfAnnotations DESC
+        """)
+        assert len(df) > 0
+
+    def test_sm_ann_cross_reference(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT i.collection_id, s.ObjectiveLensPower, g.AnnotationGroupLabel,
+                   g.NumberOfAnnotations, g.GraphicType
+            FROM ann_group_index g
+            JOIN ann_index a ON g.SeriesInstanceUID = a.SeriesInstanceUID
+            JOIN sm_index s ON a.referenced_SeriesInstanceUID = s.SeriesInstanceUID
+            JOIN index i ON a.SeriesInstanceUID = i.SeriesInstanceUID
+            WHERE i.collection_id = 'tcga_brca'
+            ORDER BY g.NumberOfAnnotations DESC
+            LIMIT 10
+        """)
+        assert len(df) > 0
+
+    def test_sm_join_pattern(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT i.collection_id, i.PatientID, s.ObjectiveLensPower,
+                   s.min_PixelSpacing_2sf
+            FROM index i
+            JOIN sm_index s ON i.SeriesInstanceUID = s.SeriesInstanceUID
+            LIMIT 10
+        """)
+        assert len(df) > 0
+
+    def test_ann_join_pattern(self, client_with_all_indices):
+        df = client_with_all_indices.sql_query("""
+            SELECT i.collection_id, g.AnnotationGroupLabel, g.GraphicType,
+                   g.NumberOfAnnotations,
+                   a.referenced_SeriesInstanceUID as source_series
+            FROM ann_group_index g
+            JOIN ann_index a ON g.SeriesInstanceUID = a.SeriesInstanceUID
+            JOIN index i ON a.SeriesInstanceUID = i.SeriesInstanceUID
+            LIMIT 10
+        """)
+        assert len(df) > 0
+
+
+# ===========================================================================
+# parquet_access_guide.md – DuckDB against the public Parquet artifacts
+# ===========================================================================
+
+PARQUET_BASE = (
+    "https://storage.googleapis.com/idc-index-data-artifacts/current/release_artifacts"
+)
+
+
+class TestParquetAccessGuide:
+    """references/parquet_access_guide.md (idc-index not used – DuckDB over HTTPS)."""
+
+    def test_listed_files_exist(self):
+        import urllib.request
+        for name in [
+            "idc_index", "volume_geometry_index", "rtstruct_index", "seg_index",
+            "sm_index", "contrast_index", "ann_index", "ann_group_index",
+            "collections_index", "analysis_results_index", "clinical_index",
+            "ct_index", "mr_index", "pt_index", "prior_versions_index",
+        ]:
+            url = f"{PARQUET_BASE}/{name}.parquet"
+            request = urllib.request.Request(url, method="HEAD")
+            with urllib.request.urlopen(request, timeout=30) as response:
+                assert response.status == 200, f"{name}.parquet missing at {url}"
+
+    def test_current_resolves_to_installed_data_release(self):
+        # The guide states current/ always resolves to the latest data release.
+        import idc_index_data
+        pinned = (
+            "https://storage.googleapis.com/idc-index-data-artifacts/"
+            f"{idc_index_data.__version__}/release_artifacts"
+        )
+        current_rows = duckdb.sql(
+            f"SELECT COUNT(*) FROM read_parquet('{PARQUET_BASE}/idc_index.parquet')"
+        ).fetchone()[0]
+        pinned_rows = duckdb.sql(
+            f"SELECT COUNT(*) FROM read_parquet('{pinned}/idc_index.parquet')"
+        ).fetchone()[0]
+        assert current_rows == pinned_rows
+
+    def test_modality_counts(self):
+        df = duckdb.sql(f"""
+            SELECT Modality, COUNT(*) as series_count,
+                   ROUND(SUM(series_size_MB)/1000, 1) as size_GB
+            FROM read_parquet('{PARQUET_BASE}/idc_index.parquet')
+            GROUP BY Modality
+            ORDER BY series_count DESC
+        """).df()
+        assert len(df) > 0
+
+    def test_ct_collections_by_size(self):
+        df = duckdb.sql(f"""
+            SELECT collection_id,
+                   COUNT(DISTINCT PatientID) as patients,
+                   COUNT(*) as series,
+                   ROUND(SUM(series_size_MB)/1000, 1) as size_GB
+            FROM read_parquet('{PARQUET_BASE}/idc_index.parquet')
+            WHERE Modality = 'CT'
+            GROUP BY collection_id
+            ORDER BY size_GB DESC
+            LIMIT 10
+        """).df()
+        assert len(df) == 10
+
+    def test_volume_geometry_join(self):
+        df = duckdb.sql(f"""
+            SELECT i.collection_id, i.SeriesInstanceUID, i.BodyPartExamined,
+                   v.obliquity_degrees, v.regularly_spaced_3d_volume
+            FROM read_parquet('{PARQUET_BASE}/idc_index.parquet') i
+            JOIN read_parquet('{PARQUET_BASE}/volume_geometry_index.parquet') v
+                ON i.SeriesInstanceUID = v.SeriesInstanceUID
+            WHERE i.Modality = 'CT'
+              AND v.regularly_spaced_3d_volume = TRUE
+            LIMIT 10
+        """).df()
+        assert len(df) == 10
+
+    def test_volume_geometry_fraction_per_collection(self):
+        df = duckdb.sql(f"""
+            SELECT i.collection_id, i.Modality, COUNT(*) as total,
+                   SUM(CASE WHEN v.regularly_spaced_3d_volume THEN 1 ELSE 0 END) as valid_3d
+            FROM read_parquet('{PARQUET_BASE}/idc_index.parquet') i
+            JOIN read_parquet('{PARQUET_BASE}/volume_geometry_index.parquet') v
+                ON i.SeriesInstanceUID = v.SeriesInstanceUID
+            WHERE i.Modality IN ('CT', 'MR', 'PT')
+            GROUP BY i.collection_id, i.Modality
+            ORDER BY total DESC
+            LIMIT 10
+        """).df()
+        assert len(df) == 10
+
+    def test_rtstruct_roi_details(self):
+        df = duckdb.sql(f"""
+            SELECT i.collection_id, i.SeriesInstanceUID, r.total_rois, r.ROINames,
+                   r.RTROIInterpretedTypes, r.referenced_SeriesInstanceUID
+            FROM read_parquet('{PARQUET_BASE}/idc_index.parquet') i
+            JOIN read_parquet('{PARQUET_BASE}/rtstruct_index.parquet') r
+                ON i.SeriesInstanceUID = r.SeriesInstanceUID
+            WHERE i.Modality = 'RTSTRUCT'
+            LIMIT 5
+        """).df()
+        assert len(df) == 5
+
+    def test_rtstruct_collections(self):
+        df = duckdb.sql(f"""
+            SELECT i.collection_id, COUNT(*) as rtstruct_series,
+                   ROUND(AVG(r.total_rois), 1) as avg_rois_per_struct
+            FROM read_parquet('{PARQUET_BASE}/idc_index.parquet') i
+            JOIN read_parquet('{PARQUET_BASE}/rtstruct_index.parquet') r
+                ON i.SeriesInstanceUID = r.SeriesInstanceUID
+            GROUP BY i.collection_id
+            ORDER BY rtstruct_series DESC
+            LIMIT 10
+        """).df()
+        assert len(df) == 10
