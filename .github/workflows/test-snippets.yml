@@ -6,12 +6,14 @@ on:
       - main
     paths:
       - 'SKILL.md'
+      - 'USAGE.md'
       - 'references/**'
       - 'tests/**'
       - '.github/workflows/test-snippets.yml'
   pull_request:
     paths:
       - 'SKILL.md'
+      - 'USAGE.md'
       - 'references/**'
       - 'tests/**'
       - '.github/workflows/test-snippets.yml'
@@ -40,3 +42,7 @@ jobs:
 
       - name: Run snippet tests
         run: pytest tests/test_snippets.py -v --timeout=300
+
+      # Skips (does not fail) when the hosted MCP server is unreachable.
+      - name: Run IDC MCP server contract tests
+        run: pytest tests/test_mcp_server.py -v --timeout=120

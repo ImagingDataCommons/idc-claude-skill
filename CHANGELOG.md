@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - "IDC MCP Server" section in `SKILL.md` and `references/mcp_guide.md`, covering IDC's hosted MCP server at `https://api.imaging.datacommons.cancer.gov/mcp` (streamable HTTP, no authentication): how to recognize it, how to divide work between it and `idc-index`, and how to hand off SeriesInstanceUIDs for download
 - Guidance to identify the server by its `idc://guide` MCP resource or a fingerprint of three or more IDC-specific tool names, and to fall back to `idc-index` whenever identification is ambiguous — generic tool names such as `run_sql` are explicitly not treated as evidence
 - "IDC MCP Server (Optional)" section in `USAGE.md` with the endpoint, when adding it is worthwhile, and a Claude Code registration example
+- `tests/test_mcp_server.py`: contract tests that parse the documented tool fingerprint and inventory out of `SKILL.md` / `references/mcp_guide.md` and check them against the live server, so the docs cannot drift silently as the beta server evolves; network tests skip rather than fail when the server is unreachable, and the offline checks guard URL consistency and keep generic tool names out of the fingerprint
+- `USAGE.md` to the `test-snippets.yml` path filter, since the new tests read it
 
 ### Changed
 
