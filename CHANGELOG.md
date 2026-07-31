@@ -5,13 +5,35 @@ All notable changes to the Imaging Data Commons Skill are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.7.0] - 2026-07-31
+
+### Added
+
+- "IDC MCP Server" section in `SKILL.md` and `references/mcp_guide.md`, covering IDC's hosted MCP server at `https://api.imaging.datacommons.cancer.gov/mcp` (streamable HTTP, no authentication): how to recognize it, how to divide work between it and `idc-index`, and how to hand off SeriesInstanceUIDs for download
+- Guidance to identify the server by its `idc://guide` MCP resource or a fingerprint of three or more IDC-specific tool names, and to fall back to `idc-index` whenever identification is ambiguous — generic tool names such as `run_sql` are explicitly not treated as evidence
+- "IDC MCP Server (Optional)" section in `USAGE.md` with the endpoint, when adding it is worthwhile, and a Claude Code registration example
+- `tests/test_mcp_server.py`: contract tests that parse the documented tool fingerprint and inventory out of `SKILL.md` / `references/mcp_guide.md` and check them against the live server, so the docs cannot drift silently as the beta server evolves; network tests skip rather than fail when the server is unreachable, and the offline checks guard URL consistency and keep generic tool names out of the fingerprint
+- `USAGE.md` to the `test-snippets.yml` path filter, since the new tests read it
+- Snippet test coverage for `references/use_cases.md`, `references/digital_pathology_guide.md`, and `references/parquet_access_guide.md`, which had none: 31 tests covering the use-case selection queries, every slide microscopy / annotation / segmentation query in the pathology guide, and the DuckDB-over-HTTPS Parquet queries. The pathology tests assert the TCGA-BRCA slide counts quoted inline in that guide (2704 primary / 399 normal, barcode sample types 01/06/11), so a data release that moves them fails CI instead of silently making the prose wrong
+- `TestParquetAccessGuide` checks that every Parquet file listed in the guide exists under `current/` and that `current/` resolves to the installed `idc-index-data` release
 
 ### Changed
 
+- Moved the MCP-vs-`idc-index` routing decision into the `SKILL.md` Overview, next to "Primary tool", so a session that already has the MCP server can skip the `idc-index` setup instead of discovering the alternative only after running it; `idc-index` remains the primary, always-available path and the version-check step is unconditional again
+- `scripts/check_version.py` no longer installs anything: when `idc-index` is missing or below the pinned minimum it prints the `pip install` command for the running interpreter and exits non-zero, leaving the choice of environment to the user. `SKILL.md` documents the new behavior
+- Updated to idc-index 0.12.5 (idc-index-data 24.2.2); IDC data version remains v24. 0.12.5 relaxes the dependency to `pandas>=2.2.2,<4`, so installing the skill's pinned minimum no longer downgrades a pandas 3.x environment (verified: 0.12.5 installs alongside pandas 3.0.5)
+- Refreshed the stale `Tested with:` headers in `references/`: `use_cases.md`, `clinical_data_guide.md`, and `digital_pathology_guide.md` claimed idc-index 0.12.1, and `parquet_access_guide.md` claimed idc-index-data 23.10.1. All snippets were re-run against idc-index 0.12.5 / idc-index-data 24.2.2 before the headers were updated. `bigquery_guide.md` now names the BigQuery dataset it was validated against (`bigquery-public-data.idc_current`, via `bq query --dry_run`) rather than an idc-index version its SQL does not use
 - Repository renamed from `idc-claude-skill` to `imaging-data-commons-skill` on GitHub to reflect that the skill is not specific to Claude
 - Made `README.md`, `USAGE.md`, `CHANGELOG.md`, the issue template, and test docstrings vendor-neutral: the skill is described as an Agent Skills–format skill usable with any compatible AI assistant; Claude-specific setup instructions remain as one supported environment
 - Promoted the `npx skills add` cross-agent installation to the top of `USAGE.md`; renamed "Claude API Setup" to "API Setup"
+
+### Security
+
+- Removed the `pip3 install --upgrade --break-system-packages` call from `scripts/check_version.py`. It bypassed the PEP 668 guard on externally managed interpreters, and — combined with the `pandas<=2.2.4` cap in idc-index ≤ 0.12.4 — could silently downgrade a system-wide pandas 3.x as a side effect of a version *check*. It also invoked whatever `pip3` resolved to on `PATH`, which is not necessarily the running interpreter's pip, so an install could land in a different environment than the one that failed to import `idc_index`. Reported in review of K-Dense-AI/scientific-agent-skills#158
+
+### Fixed
+
+- `parse_version` in `scripts/check_version.py` no longer raises on pre-release or suffixed tags (`0.13.0rc1`, `v1.7.0-beta`); it takes the leading digits of each component and pads to three, so an upstream pre-release cannot crash the startup check. Pre-releases compare equal to their base release, keeping update notices conservative
 
 ## [1.6.5] - 2026-06-17
 

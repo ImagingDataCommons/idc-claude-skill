@@ -98,6 +98,7 @@ Please also read /path/to/imaging-data-commons-skill/references/clinical_data_gu
 Please also read /path/to/imaging-data-commons-skill/references/cloud_storage_guide.md # Direct GCS/S3 access
 Please also read /path/to/imaging-data-commons-skill/references/cli_guide.md           # idc-index CLI tools
 Please also read /path/to/imaging-data-commons-skill/references/parquet_access_guide.md # Direct Parquet queries
+Please also read /path/to/imaging-data-commons-skill/references/mcp_guide.md            # Hosted IDC MCP server
 ```
 
 ### Verifying Installation
@@ -111,6 +112,40 @@ Or invoke directly:
 ```
 /imaging-data-commons
 ```
+
+## IDC MCP Server (Optional)
+
+IDC operates a hosted [MCP](https://modelcontextprotocol.io/) server that exposes IDC
+discovery, cohort building, and metadata queries as agent tools:
+
+| Property | Value |
+|----------|-------|
+| URL | `https://api.imaging.datacommons.cancer.gov/mcp` |
+| Transport | Streamable HTTP |
+| Authentication | None |
+
+This is optional and independent of the skill — the skill is fully functional without it. When
+both are present, the skill routes discovery and metadata to the server and keeps downloads,
+local analysis, DICOMweb, and BigQuery for `idc-index`. See
+[references/mcp_guide.md](references/mcp_guide.md) for the full division of labor.
+
+Adding the server is worthwhile if you do a lot of interactive exploration, or if you work in
+an assistant without local Python. If you mainly download data and analyze it locally, the
+skill alone is enough.
+
+Registration is agent-specific; consult your agent's MCP documentation. For Claude Code:
+
+```bash
+claude mcp add --transport http idc https://api.imaging.datacommons.cancer.gov/mcp
+```
+
+On claude.ai, add it under [Settings > Connectors](https://claude.ai/customize/connectors) as
+a custom connector with the URL above.
+
+Two Claude Code notes if you write permission rules: tools are namespaced by the server name
+you choose, so a CLI install named `idc` produces `mcp__idc__*` while a claude.ai connector
+produces `mcp__claude_ai_<name>__*`. Allow rules require a literal server segment —
+`mcp__idc__*` works, `mcp__*` is ignored.
 
 ## API Setup
 
@@ -240,7 +275,7 @@ Assistant: [Checks license and explains usage restrictions]
 ## Resources
 
 - [SKILL.md](SKILL.md) - Comprehensive skill documentation
-- [references/](references/) - Reference guides (BigQuery, DICOMweb, SQL patterns, pathology, clinical data, cloud storage, CLI, Parquet)
+- [references/](references/) - Reference guides (BigQuery, DICOMweb, SQL patterns, pathology, clinical data, cloud storage, CLI, Parquet, MCP server)
 - [IDC Documentation](https://learn.canceridc.dev/)
 - [idc-index Package](https://pypi.org/project/idc-index/)
 - [IDC Portal](https://portal.imaging.datacommons.cancer.gov/)

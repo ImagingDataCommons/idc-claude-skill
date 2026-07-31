@@ -3,9 +3,9 @@ name: imaging-data-commons
 description: Query and download public cancer imaging data from NCI Imaging Data Commons using idc-index. Invoke for any question about IDC collections, cancer imaging datasets, DICOM data access, radiology (CT, MR, PET) or pathology AI training sets, metadata queries, visualization, or license checks — even when the user doesn't explicitly mention "IDC". No authentication required.
 license: This skill is provided under the MIT License. IDC data itself has individual licensing (mostly CC-BY, some CC-NC) that must be respected when using the data.
 metadata:
-    version: 1.6.5
+    version: 1.7.0
     skill-author: Andrey Fedorov, @fedorov
-    idc-index: "0.12.3"
+    idc-index: "0.12.5"
     idc-data-version: "v24"
     repository: https://github.com/ImagingDataCommons/imaging-data-commons-skill
 ---
@@ -20,18 +20,26 @@ Use the `idc-index` Python package to query and download public cancer imaging d
 
 **Current IDC Data Version: v24** (always verify with `IDCClient().get_idc_version()`)
 
-**Primary tool:** `idc-index` ([GitHub](https://github.com/imagingdatacommons/idc-index))
+**Primary tool:** `idc-index` ([GitHub](https://github.com/imagingdatacommons/idc-index)) — the
+default path, always available.
 
-**CRITICAL - run this FIRST**, before any IDC query:
+**First, check your session:** if it already has the hosted IDC MCP server, route discovery and
+metadata there and skip the setup below — see *IDC MCP Server*. Return here for downloads and
+local analysis. Otherwise continue straight through.
+
+**CRITICAL - run this FIRST**, before any IDC query that uses `idc-index`:
 
 ```bash
 python scripts/check_version.py
 ```
 
-It installs the pinned `idc-index` minimum if needed and prints a notice when a newer
-`idc-index` release (which may carry a newer IDC data version) or a newer skill version is
-available, along with the link to update. If it reports an upgrade, restart Python before
-continuing.
+It checks the installed `idc-index` against the pinned minimum and prints a notice when a
+newer `idc-index` release (which may carry a newer IDC data version) or a newer skill version
+is available, along with the link to update.
+
+The script never installs or upgrades anything itself. If the pinned minimum is missing it
+exits non-zero and prints the exact `pip install` command for the running interpreter — run
+that command, preferring a virtual environment, then restart Python before continuing.
 
 **Verify IDC data version and check current data scale:**
 
@@ -62,6 +70,35 @@ print(stats)
 2. Download DICOM files → `client.download_from_selection()`
 3. Visualize in browser → `client.get_viewer_URL(seriesInstanceUID=...)`
 
+## IDC MCP Server
+
+IDC operates a hosted MCP server at `https://api.imaging.datacommons.cancer.gov/mcp`
+(streamable HTTP, no authentication). Where it is available it complements — it does not
+replace — the `idc-index` workflow below.
+
+**Identify it** by the MCP resource `idc://guide`, or by three or more of the tool names
+`build_cohort`, `get_cohort_urls`, `list_analysis_results`, and `get_idc_version`. Generic
+names such as `run_sql` are not evidence on their own. If identification is ambiguous, use
+`idc-index`.
+
+**If this session has the server**, treat it as authoritative for discovery and metadata —
+IDC version, counts, attribute values, cohort building, metadata SQL — and follow the
+server's own instructions rather than re-deriving them from this file. Its data version is
+whatever the server reports: call `get_idc_version` instead of relying on the version pinned
+in this file.
+
+Return here for what the server does not do: downloading files, local pandas/notebook
+analysis, DICOMweb, BigQuery, digital pathology tiling, and reproducible scripts. Hand off by
+passing SeriesInstanceUIDs from the server to `client.download_from_selection(...)`, and run
+`scripts/check_version.py` at that point.
+
+**If it is not available**, use `idc-index` below — the default, fully capable path. Mention
+the endpoint once only if the task would clearly benefit (repeated interactive discovery, or
+no local Python), and let the user decide how to connect it. Do not change their
+configuration, and do not repeat the suggestion.
+
+See `references/mcp_guide.md` for the tool inventory, handoff patterns, and per-host notes.
+
 ## When to Use This Skill
 
 - Finding publicly available radiology (CT, MR, PET) or pathology (slide microscopy) images
@@ -73,6 +110,7 @@ print(stats)
 ## Quick Navigation
 
 **Core Sections (inline):**
+- IDC MCP Server - When to route discovery and metadata to the hosted server
 - IDC Data Model - Collection and analysis result hierarchy
 - Index Tables - Available tables and joining patterns
 - Core Capabilities - Essential API patterns (query, download, visualize, license, citations)
@@ -93,6 +131,7 @@ print(stats)
 | `bigquery_guide.md` | Full DICOM metadata, private elements (requires GCP) |
 | `cli_guide.md` | Command-line tools (`idc download`, manifest files) |
 | `parquet_access_guide.md` | Direct Parquet queries via GCS (no idc-index install needed) |
+| `mcp_guide.md` | Hosted IDC MCP server: tool inventory, identification, handoff to `idc-index` |
 
 ## IDC Data Model
 
@@ -200,6 +239,7 @@ See `references/clinical_data_guide.md` for detailed workflows including value m
 | Method | Auth Required | Best For |
 |--------|---------------|----------|
 | `idc-index` | No | Key queries and downloads (recommended) |
+| IDC MCP server | No | Discovery, cohort building, and metadata when the session already has it |
 | Direct Parquet (GCS) | No | Quick queries without installing idc-index; always uses latest data |
 | IDC Portal | No | Interactive exploration, manual selection, browser-based download |
 | BigQuery | Yes (GCP account) | Complex queries, full DICOM metadata |
@@ -643,6 +683,7 @@ See `references/bigquery_guide.md` for schemas, column descriptions, and query e
 | Task | Tool | Reference |
 |------|------|-----------|
 | Programmatic queries & downloads | `idc-index` | This document |
+| Discovery & cohort building, when the session has the hosted MCP server | IDC MCP server | `references/mcp_guide.md` |
 | Interactive exploration | IDC Portal | https://portal.imaging.datacommons.cancer.gov/ |
 | Complex metadata queries | BigQuery | `references/bigquery_guide.md` |
 | 3D visualization & analysis | SlicerIDCBrowser | https://github.com/ImagingDataCommons/SlicerIDCBrowser |
