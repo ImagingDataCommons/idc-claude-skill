@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- "IDC MCP Server" section in `SKILL.md` and `references/mcp_guide.md`, covering IDC's hosted MCP server at `https://api.imaging.datacommons.cancer.gov/mcp` (streamable HTTP, no authentication): how to recognize it, how to divide work between it and `idc-index`, and how to hand off SeriesInstanceUIDs for download
+- Guidance to identify the server by its `idc://guide` MCP resource or a fingerprint of three or more IDC-specific tool names, and to fall back to `idc-index` whenever identification is ambiguous — generic tool names such as `run_sql` are explicitly not treated as evidence
+- "IDC MCP Server (Optional)" section in `USAGE.md` with the endpoint, when adding it is worthwhile, and a Claude Code registration example
+
 ### Changed
 
 - Repository renamed from `idc-claude-skill` to `imaging-data-commons-skill` on GitHub to reflect that the skill is not specific to Claude
