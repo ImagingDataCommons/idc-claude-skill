@@ -5,6 +5,17 @@ All notable changes to the Imaging Data Commons Skill are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.1] - 2026-07-31
+
+### Changed
+
+- Trimmed `SKILL.md` from 791 to 684 lines by relocating content to reference guides rather than deleting it, resuming the Phase 2 reduction that the 1.7.0 MCP section had reversed:
+  - Moved the three "what's new in IDC vX" queries to `references/sql_patterns.md` under a new "Version Tracking" section; `SKILL.md` keeps the guidance that matters (use `series_init_idc_version` / `series_revised_idc_version`, never `prior_versions_index`) as a pointer
+  - Dropped the second filter-value-discovery query from "Querying Metadata with SQL", which duplicated the `BodyPartExamined` pattern already in `sql_patterns.md`, and the flat-`dirTemplate` and `source_bucket_location="gcs"` download variants, both now described in prose next to the canonical example
+  - Removed the repeated `from idc_index import IDCClient` / `client = IDCClient()` preamble from six examples, stating once in the Overview that examples assume it — matching how `sql_patterns.md` is already written
+  - Condensed the DICOMweb endpoint table, the `citations_from_selection` parameter list, and the downloaded-file-naming notes into prose; the full endpoint details remain in `references/dicomweb_guide.md`
+  - Deduplicated the two `references/bigquery_guide.md` pointers in "Advanced Queries with BigQuery"
+
 ## [1.7.0] - 2026-07-31
 
 ### Added
