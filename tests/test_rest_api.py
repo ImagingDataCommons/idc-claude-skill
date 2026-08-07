@@ -142,7 +142,7 @@ class TestDocumentedContract:
         # idc-index resolves manifest URLs against its own index, so a manifest from a newer
         # API release loses rows silently. Both files must carry the direct-bucket fallback.
         guide = _read(_REST_GUIDE)
-        assert "When the local index is behind the API" in guide
+        assert "When the local index is a data release behind the API" in guide
         assert "s5cmd --no-sign-request run" in guide
         assert "s5cmd --no-sign-request" in _read(_SKILL_MD), (
             "SKILL.md must name the direct-bucket fallback; the failure it avoids is silent"

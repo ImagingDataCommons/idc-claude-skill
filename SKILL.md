@@ -290,10 +290,12 @@ curl -s https://api.imaging.datacommons.cancer.gov/v3/cohort/counts \
 
 Both sides are built on `idc-index-data` and report its version, so check them against each
 other before mixing them: the API's `idc_index_data_version` (from `/v3/version`) vs local
-`idc_index_data.__version__`. If the API is ahead, `idc-index` **cannot download the extra
-series** — it resolves every URL against its own index and silently skips what it does not
-list — so either `pip install --upgrade idc-index` or transfer directly from the bucket with
-`s5cmd --no-sign-request`.
+`idc_index_data.__version__`. The **major is the IDC data release** (`24.x.y` serves `v24`);
+minor and patch are index builds of that same release. If only the index build differs, the
+series are identical. If the API is a whole release ahead, `idc-index` **cannot download the
+extra series** — it resolves every URL against its own index and silently skips what it does
+not list — so either `pip install --upgrade idc-index` or transfer directly from the bucket
+with `s5cmd --no-sign-request`.
 
 See `references/rest_api_guide.md` for the endpoint reference, filter syntax, limits, the
 version-skew download workaround, and the body-shape pitfall that makes a mis-shaped filter

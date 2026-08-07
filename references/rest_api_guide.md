@@ -31,7 +31,7 @@ storage to the client.
 | Session already has the hosted MCP server | MCP tools (`mcp_guide.md`) — same data, no HTTP plumbing |
 | Local Python, results feed pandas / downloads | `idc-index` (`SKILL.md`) |
 | No Python, or a non-Python client, or shell commands the user re-runs | This REST API |
-| Installed `idc-index` is behind the current IDC release and cannot be upgraded here | REST API for the query, **direct bucket transfer** may be needed for the download — `idc-index` cannot fetch what its index does not list |
+| Installed `idc-index` is a whole IDC data release behind and cannot be upgraded here | REST API for the query, **direct bucket transfer** may be needed for the download — `idc-index` cannot fetch what its index does not list |
 
 Being hosted, the API always serves a current IDC release — but so does an up-to-date
 `idc-index`. "I want the newest data" is not on its own a reason to prefer the API: the normal
@@ -76,19 +76,30 @@ import idc_index_data
 import requests
 
 api = requests.get("https://api.imaging.datacommons.cancer.gov/v3/version", timeout=30).json()
-local = idc_index_data.__version__
+api_version, local_version = api["idc_index_data_version"], idc_index_data.__version__
 
-if api["idc_index_data_version"] != local:
-    print(f"API serves idc-index-data {api['idc_index_data_version']}, local install has {local}")
-    # → API serves idc-index-data 24.2.2, local install has 24.2.0
+if api_version.split(".")[0] != local_version.split(".")[0]:
+    print(f"Different IDC data release: API {api_version}, local {local_version} — upgrade")
+elif api_version != local_version:
+    print(f"Same data release, different index build: API {api_version}, local {local_version}")
+    # → Same data release, different index build: API 24.2.2, local 24.2.0
 ```
 
-**Compare `idc_index_data_version`, not `idc_version`.** The `vNN` label is coarse: several
-`idc-index-data` releases can carry the same one — 24.2.0 and 24.2.2 are both `v24` — so
-matching `v24` on both sides does not mean the two indices are identical. A patch-level
-difference usually means added index tables or columns and corrected rows rather than a
-different data release, but it is enough to make the same query return different results on
-each side.
+**The major is the IDC data release; the rest is the index build.** `idc-index-data` `24.x.y`
+serves IDC `v24` — 24.0.0 shipped with the v24 release, and 24.1.0 / 24.2.x are later builds of
+the *same* release. What differs between them is the index itself (added tables and columns,
+corrected metadata), never which series IDC contains.
+
+So read a mismatch by its position:
+
+| Difference | Means | Consequence |
+|------------|-------|-------------|
+| Major (24.x.y vs 25.x.y) | Different IDC data release | Series added, revised, or removed. Counts legitimately differ, and `idc-index` **cannot download** what its index does not list |
+| Minor or patch (24.2.0 vs 24.2.2) | Same data release, different index build | Same series everywhere; downloads are unaffected. A metadata query can still differ if it touches a column that was added or corrected |
+
+Comparing `idc_version` alone cannot make this distinction in the other direction either — the
+`vNN` label is exactly the major, so matching `v24` on both sides tells you the release agrees
+but says nothing about the index build.
 
 When the two disagree, say so and name both versions, then reconcile rather than mixing
 results: `pip install --upgrade idc-index` brings the local side to the newer
@@ -96,10 +107,10 @@ results: `pip install --upgrade idc-index` brings the local side to the newer
 available. Do not present API-derived and locally-derived counts side by side as if they came
 from one index.
 
-**A behind-by-one local index also breaks downloads.** `idc-index` resolves every `s3://` URL
-it is given against its *own* index, so a manifest from a newer API release can name series it
-has never heard of — see *When the local index is behind the API* under **Getting the Data**.
-Upgrade, or transfer straight from the bucket.
+**A major behind also breaks downloads.** `idc-index` resolves every `s3://` URL it is given
+against its *own* index, so a manifest built from a newer IDC data release can name series it
+has never heard of — see *When the local index is a data release behind the API* under
+**Getting the Data**.
 
 ### Use v3 only — V1 and V2 are being retired
 
@@ -431,13 +442,17 @@ idc download-from-manifest idc_manifest.txt --download-dir ./idc-data
 For a filter that is a single `collection_id`, the `download` payload of `cohort/manifest`
 emits the simpler `idc download <collection_id> --download-dir ./idc-data` form.
 
-### When the local index is behind the API
+### When the local index is a data release behind the API
+
+This applies when the two `idc-index-data` **majors** differ — the API serving `25.x.y` against
+a local `24.x.y`, say. A newer build of the same release (24.2.2 vs 24.2.0) covers the same
+series, so manifests from it resolve locally and downloads are unaffected.
 
 `idc download-from-manifest` does not simply hand the URLs to a transfer client: it extracts
 each `crdc_series_uuid` from the manifest and joins it against the **local** index (then
 against `prior_versions_index`) to compute sizes and build the output hierarchy. A manifest
-produced by an API serving a newer `idc-index-data` release can therefore contain series the
-local index has never heard of.
+produced by an API serving a newer IDC data release can therefore contain series the local
+index has never heard of.
 
 Those rows are **not** downloaded, and the command does not fail — it logs, then continues
 with the rest:
@@ -550,12 +565,13 @@ discovery happened over the API — the two version independently. Compare
 `idc_index_data_version` on both sides first (see *Checking the API against a local
 idc-index*).
 
-**This handoff is only valid while the local index is not behind the API.** `idc-index` can
-only download series its own index lists, so when the API is ahead, UIDs and manifest URLs it
-returned may resolve to nothing locally — `download_from_selection` silently drops them and
-`download-from-manifest` logs them as unrecognized and skips them. Do not report that as "no
-data": name both versions, then either upgrade `idc-index` or download straight from the
-bucket, as described in *When the local index is behind the API*.
+**This handoff is only valid while the two are on the same IDC data release** — the same
+`idc-index-data` major. `idc-index` can only download series its own index lists, so when the
+API is a release ahead, UIDs and manifest URLs it returned may resolve to nothing locally:
+`download_from_selection` silently drops them and `download-from-manifest` logs them as
+unrecognized and skips them. Do not report that as "no data": name both versions, then either
+upgrade `idc-index` or download straight from the bucket, as described in *When the local index
+is a data release behind the API*.
 
 ## What the API Does Not Cover
 
