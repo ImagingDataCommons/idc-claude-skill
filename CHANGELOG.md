@@ -5,6 +5,23 @@ All notable changes to the Imaging Data Commons Skill are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.8.0] - 2026-08-07
+
+### Added
+
+- `references/rest_api_guide.md` — IDC's hosted REST API at `https://api.imaging.datacommons.cancer.gov/v3` (no authentication): query surfaces, endpoint reference, `terms` / `ranges` filter syntax, SQL guardrails, clinical tables, manifests, licenses, citations. Verified endpoint by endpoint against API 3.0.0b2 / IDC v24
+- Warning that filter endpoints ignore unrecognized top-level keys, so a mis-shaped body silently selects **all of IDC** with HTTP 200: `counts` and `licenses` take the filter object directly, while `manifest`, `manifest.txt`, and `citations` wrap it in `filters`
+- Measured request limits: `/sql` `max_rows` 5000 default / 10000 cap, `cohort/manifest` `page_size` 100 / 5000, clinical rows 5000 / 100000, attribute values 100 / 10000; `cohort/manifest.txt` is the one uncapped surface
+- How to check the API against a local `idc-index`: compare `idc_index_data_version`, not the coarse `vNN` label — 24.2.0 and 24.2.2 are both `v24`
+- Workaround for version skew: `idc-index` silently skips manifest rows its own index does not list, so upgrade it or transfer directly from the bucket with `s5cmd --no-sign-request`. Also summarized in `SKILL.md`, since the failure is silent
+- "Use v3 only" guidance in `SKILL.md` and the guide: V1 and V2 are superseded and scheduled for shutdown, so V1/V2 examples should be ported rather than extended
+- REST API entries in `SKILL.md` (Data Access Options, Quick Navigation, Tool Selection Guide, network access) and `USAGE.md` (setup section, allowed domains, guide listings)
+- `tests/test_rest_api.py`: contract tests that check the guide's endpoint list, attribute lists, and limits against the live API, skipping when it is unreachable. Added to `test-snippets.yml`
+
+### Changed
+
+- `test_endpoint_url_is_consistent_across_docs` now allows `/v3` REST paths alongside the MCP URL, still rejecting a bare host or a stale `/v1`, `/v2` path
+
 ## [1.7.1] - 2026-08-01
 
 ### Changed

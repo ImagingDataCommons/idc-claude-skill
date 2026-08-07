@@ -32,6 +32,7 @@ This gives Claude the complete skill with all the reference guides in one upload
      * `*.github.com` and `*.githubusercontent.com`: used to access source code and release artifacts
      * `*.googleapis.com`: used to fetch IDC data from Google Storage buckets
      * `*.s3.amazonaws.com`: used to fetch IDC data from Amazon S3 buckets
+     * `api.imaging.datacommons.cancer.gov`: used for the IDC REST API and MCP server (optional — only if you want the skill to query IDC over HTTP)
 
 <img width="899" height="648" alt="image" src="https://github.com/user-attachments/assets/5bcb2d6f-9b9b-4c9e-955f-839cb4a98ca3" />
 
@@ -99,6 +100,7 @@ Please also read /path/to/imaging-data-commons-skill/references/cloud_storage_gu
 Please also read /path/to/imaging-data-commons-skill/references/cli_guide.md           # idc-index CLI tools
 Please also read /path/to/imaging-data-commons-skill/references/parquet_access_guide.md # Direct Parquet queries
 Please also read /path/to/imaging-data-commons-skill/references/mcp_guide.md            # Hosted IDC MCP server
+Please also read /path/to/imaging-data-commons-skill/references/rest_api_guide.md       # Hosted IDC REST API
 ```
 
 ### Verifying Installation
@@ -146,6 +148,23 @@ Two Claude Code notes if you write permission rules: tools are namespaced by the
 you choose, so a CLI install named `idc` produces `mcp__idc__*` while a claude.ai connector
 produces `mcp__claude_ai_<name>__*`. Allow rules require a literal server segment —
 `mcp__idc__*` works, `mcp__*` is ignored.
+
+## IDC REST API (No Setup Required)
+
+The same service is also a plain REST API at `https://api.imaging.datacommons.cancer.gov/v3`,
+with no authentication and nothing to register. The skill uses it when an assistant has no
+local Python, when the client is another language, or when the user wants shell commands they
+can re-run:
+
+```bash
+curl -s https://api.imaging.datacommons.cancer.gov/v3/version
+```
+
+The only setup it may need is network access: in a sandboxed assistant, add
+`api.imaging.datacommons.cancer.gov` to the allowed domains alongside the storage domains
+listed above. See [references/rest_api_guide.md](references/rest_api_guide.md) for the endpoint
+reference, and [the Swagger UI](https://api.imaging.datacommons.cancer.gov/v3/docs) to try
+endpoints in a browser.
 
 ## API Setup
 
@@ -275,7 +294,7 @@ Assistant: [Checks license and explains usage restrictions]
 ## Resources
 
 - [SKILL.md](SKILL.md) - Comprehensive skill documentation
-- [references/](references/) - Reference guides (BigQuery, DICOMweb, SQL patterns, pathology, clinical data, cloud storage, CLI, Parquet, MCP server)
+- [references/](references/) - Reference guides (BigQuery, DICOMweb, SQL patterns, pathology, clinical data, cloud storage, CLI, Parquet, MCP server, REST API)
 - [IDC Documentation](https://learn.canceridc.dev/)
 - [idc-index Package](https://pypi.org/project/idc-index/)
 - [IDC Portal](https://portal.imaging.datacommons.cancer.gov/)
