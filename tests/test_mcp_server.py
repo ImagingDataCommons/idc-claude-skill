@@ -29,6 +29,8 @@ _MCP_GUIDE = os.path.join(_ROOT, "references", "mcp_guide.md")
 _USAGE_MD = os.path.join(_ROOT, "USAGE.md")
 
 MCP_URL = "https://api.imaging.datacommons.cancer.gov/mcp"
+# The REST API lives on the same host; SKILL.md and USAGE.md may reference it too.
+REST_PREFIX = "https://api.imaging.datacommons.cancer.gov/v3"
 
 # Names generic enough that another MCP server could plausibly expose them. The skill must
 # never rely on these to identify IDC; see "Identifying the server" in mcp_guide.md.
@@ -128,9 +130,13 @@ class TestDocumentedContract:
     """Internal consistency of the MCP guidance across the skill's files."""
 
     def test_endpoint_url_is_consistent_across_docs(self):
+        # Every api.imaging.datacommons.cancer.gov URL in these files must be either the MCP
+        # endpoint or a /v3 REST path — a bare host or a stale /v1, /v2 path is a typo.
         for path in (_SKILL_MD, _MCP_GUIDE, _USAGE_MD):
             urls = set(re.findall(r"https://api\.imaging\.datacommons\.cancer\.gov[\w/.-]*", _read(path)))
-            assert urls == {MCP_URL}, f"{os.path.basename(path)} references {urls or 'no'} MCP URL"
+            assert MCP_URL in urls, f"{os.path.basename(path)} does not reference the MCP URL"
+            stray = {url for url in urls if url != MCP_URL and not url.startswith(REST_PREFIX)}
+            assert not stray, f"{os.path.basename(path)} references unexpected IDC API URLs: {sorted(stray)}"
 
     def test_fingerprint_excludes_generic_tool_names(self):
         # Guards the design decision in mcp_guide.md: a name another server could also

@@ -46,3 +46,7 @@ jobs:
       # Skips (does not fail) when the hosted MCP server is unreachable.
       - name: Run IDC MCP server contract tests
         run: pytest tests/test_mcp_server.py -v --timeout=120
+
+      # Skips (does not fail) when the hosted REST API is unreachable.
+      - name: Run IDC REST API contract tests
+        run: pytest tests/test_rest_api.py -v --timeout=120

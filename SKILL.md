@@ -3,7 +3,7 @@ name: imaging-data-commons
 description: Query and download public cancer imaging data from NCI Imaging Data Commons using idc-index. Invoke for any question about IDC collections, cancer imaging datasets, DICOM data access, radiology (CT, MR, PET) or pathology AI training sets, metadata queries, visualization, or license checks — even when the user doesn't explicitly mention "IDC". No authentication required.
 license: This skill is provided under the MIT License. IDC data itself has individual licensing (mostly CC-BY, some CC-NC) that must be respected when using the data.
 metadata:
-    version: 1.7.1
+    version: 1.8.0
     skill-author: Andrey Fedorov, @fedorov
     idc-index: "0.12.5"
     idc-data-version: "v24"
@@ -16,7 +16,7 @@ metadata:
 
 Use the `idc-index` Python package to query and download public cancer imaging data from the National Cancer Institute Imaging Data Commons (IDC). No authentication required for data access.
 
-**Expected network access:** `idc-index` queries a local DuckDB index (no network for metadata). File downloads use public GCS (`storage.googleapis.com`) and AWS S3 (`s3.amazonaws.com`) — no authentication required. DICOMweb access uses either the public IDC proxy (`proxy.imaging.datacommons.cancer.gov`, no auth) or the Google Cloud Healthcare API (`healthcare.googleapis.com`, requires GCP authentication). Optional BigQuery queries (`bigquery.googleapis.com`) also require GCP authentication. No credentials or environment variables are accessed by this skill.
+**Expected network access:** `idc-index` queries a local DuckDB index (no network for metadata). File downloads use public GCS (`storage.googleapis.com`) and AWS S3 (`s3.amazonaws.com`) — no authentication required. The optional IDC REST API and MCP server (`api.imaging.datacommons.cancer.gov`) also need no authentication. DICOMweb access uses either the public IDC proxy (`proxy.imaging.datacommons.cancer.gov`, no auth) or the Google Cloud Healthcare API (`healthcare.googleapis.com`, requires GCP authentication). Optional BigQuery queries (`bigquery.googleapis.com`) also require GCP authentication. No credentials or environment variables are accessed by this skill.
 
 **Current IDC Data Version: v24** (always verify with `IDCClient().get_idc_version()`)
 
@@ -97,7 +97,9 @@ passing SeriesInstanceUIDs from the server to `client.download_from_selection(..
 **If it is not available**, use `idc-index` below — the default, fully capable path. Mention
 the endpoint once only if the task would clearly benefit (repeated interactive discovery, or
 no local Python), and let the user decide how to connect it. Do not change their
-configuration, and do not repeat the suggestion.
+configuration, and do not repeat the suggestion. The same service is also reachable without
+any MCP configuration as a REST API at `https://api.imaging.datacommons.cancer.gov/v3` — see
+*Data Access Options* and `references/rest_api_guide.md`.
 
 See `references/mcp_guide.md` for the tool inventory, handoff patterns, and per-host notes.
 
@@ -134,6 +136,7 @@ See `references/mcp_guide.md` for the tool inventory, handoff patterns, and per-
 | `cli_guide.md` | Command-line tools (`idc download`, manifest files) |
 | `parquet_access_guide.md` | Direct Parquet queries via GCS (no idc-index install needed) |
 | `mcp_guide.md` | Hosted IDC MCP server: tool inventory, identification, handoff to `idc-index` |
+| `rest_api_guide.md` | Hosted IDC REST API: endpoints, filter syntax, SQL over HTTP, manifests |
 
 ## IDC Data Model
 
@@ -238,6 +241,7 @@ See `references/clinical_data_guide.md` for detailed workflows including value m
 |--------|---------------|----------|
 | `idc-index` | No | Key queries and downloads (recommended) |
 | IDC MCP server | No | Discovery, cohort building, and metadata when the session already has it |
+| IDC REST API | No | HTTP access from any language or shell; no Python install |
 | Direct Parquet (GCS) | No | Quick queries without installing idc-index; always uses latest data |
 | IDC Portal | No | Interactive exploration, manual selection, browser-based download |
 | BigQuery | Yes (GCP account) | Complex queries, full DICOM metadata |
@@ -263,6 +267,39 @@ See `references/cloud_storage_guide.md` for bucket details, access commands, UUI
 IDC data is available via DICOMweb (Google Cloud Healthcare API implementation) for PACS integration and DICOMweb-compatible tools: a public proxy (no auth, daily quota) for testing and moderate queries, or Google Healthcare (GCP auth) for production volumes.
 
 See `references/dicomweb_guide.md` for endpoint URLs, code examples, supported operations, and implementation details.
+
+**REST API**
+
+IDC hosts a REST API at `https://api.imaging.datacommons.cancer.gov/v3` (no authentication)
+covering discovery, cohort counts and manifests, read-only SQL, clinical tables, viewer URLs,
+licenses, and citations. It is the same service as the MCP server, over plain HTTP. Reach for
+it when there is no Python available, when the client is another language, or when the user
+wants shell commands they can re-run; use `idc-index` when the result must become a Python
+object or files must be downloaded.
+
+**Use v3 only.** The V1 and V2 APIs are superseded and scheduled for shutdown — never write
+new code against them, and port any V1/V2 examples a user brings (recognizable by a `/v1/` or
+`/v2/` path, or filter suffixes like `Modality_btw`) to v3 instead of extending them.
+
+```bash
+curl -s https://api.imaging.datacommons.cancer.gov/v3/version
+curl -s https://api.imaging.datacommons.cancer.gov/v3/cohort/counts \
+  -H 'content-type: application/json' \
+  -d '{"terms": {"Modality": ["MR"], "BodyPartExamined": ["BREAST"]}}'
+```
+
+Both sides are built on `idc-index-data` and report its version, so check them against each
+other before mixing them: the API's `idc_index_data_version` (from `/v3/version`) vs local
+`idc_index_data.__version__`. The **major is the IDC data release** (`24.x.y` serves `v24`);
+minor and patch are index builds of that same release. If only the index build differs, the
+series are identical. If the API is a whole release ahead, `idc-index` **cannot download the
+extra series** — it resolves every URL against its own index and silently skips what it does
+not list — so either `pip install --upgrade idc-index` or transfer directly from the bucket
+with `s5cmd --no-sign-request`.
+
+See `references/rest_api_guide.md` for the endpoint reference, filter syntax, limits, the
+version-skew download workaround, and the body-shape pitfall that makes a mis-shaped filter
+silently return all of IDC.
 
 **Direct Parquet access**
 
@@ -577,6 +614,7 @@ See `references/bigquery_guide.md` for setup, schemas, query patterns, private e
 |------|------|-----------|
 | Programmatic queries & downloads | `idc-index` | This document |
 | Discovery & cohort building, when the session has the hosted MCP server | IDC MCP server | `references/mcp_guide.md` |
+| Queries from a shell or a non-Python client | IDC REST API | `references/rest_api_guide.md` |
 | Interactive exploration | IDC Portal | https://portal.imaging.datacommons.cancer.gov/ |
 | Complex metadata queries | BigQuery | `references/bigquery_guide.md` |
 | 3D visualization & analysis | SlicerIDCBrowser | https://github.com/ImagingDataCommons/SlicerIDCBrowser |
