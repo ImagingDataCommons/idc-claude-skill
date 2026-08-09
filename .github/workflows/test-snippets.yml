@@ -40,6 +40,11 @@ jobs:
       - name: Install test dependencies
         run: pip install -r tests/requirements-test.txt
 
+      # Pure file checks (line budget, link resolution, always-loaded content).
+      # Runs first: it is fast and catches structural regressions before the slow suites.
+      - name: Run structure contract tests
+        run: pytest tests/test_structure.py -v
+
       - name: Run snippet tests
         run: pytest tests/test_snippets.py -v --timeout=300
 

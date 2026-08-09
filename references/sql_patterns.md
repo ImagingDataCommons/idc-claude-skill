@@ -29,6 +29,59 @@ from idc_index import IDCClient
 client = IDCClient()
 ```
 
+## Overall Data Scale
+
+Counts and total size across all of IDC — useful for orienting a user, and for sanity-checking
+that the index loaded the release you expect:
+
+```python
+stats = client.sql_query("""
+    SELECT
+        COUNT(DISTINCT collection_id) as collections,
+        COUNT(DISTINCT analysis_result_id) as analysis_results,
+        COUNT(DISTINCT PatientID) as patients,
+        COUNT(DISTINCT StudyInstanceUID) as studies,
+        COUNT(DISTINCT SeriesInstanceUID) as series,
+        SUM(instanceCount) as instances,
+        SUM(series_size_MB)/1000000 as size_TB
+    FROM index
+""")
+print(stats)
+```
+
+### Per-collection breakdown
+
+```python
+# Get summary statistics from primary index
+collections_summary = client.sql_query("""
+    SELECT collection_id,
+           COUNT(DISTINCT PatientID) as patients,
+           COUNT(DISTINCT SeriesInstanceUID) as series,
+           SUM(series_size_MB) as size_mb
+    FROM index
+    GROUP BY collection_id
+    ORDER BY patients DESC
+""")
+```
+
+For richer per-collection metadata — cancer types, tumor locations, species, supporting data —
+query `collections_index` instead; for derived datasets, `analysis_results_index`. Both need
+`client.fetch_index(...)` first:
+
+```python
+client.fetch_index("collections_index")
+collections_info = client.sql_query("""
+    SELECT collection_id, cancer_types, tumor_locations, species, subjects, supporting_data
+    FROM collections_index
+""")
+
+client.fetch_index("analysis_results_index")
+analysis_info = client.sql_query("""
+    SELECT analysis_result_id, analysis_result_title, subjects, collections, modalities
+    FROM analysis_results_index
+""")
+```
+
 ## Discover Available Filter Values
 
 ```python

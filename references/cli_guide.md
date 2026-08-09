@@ -50,6 +50,22 @@ idc download manifest.txt --download-dir ./data
 
 ### Directory Template Variables
 
+The same templates apply in Python, where the argument is `dirTemplate=` rather than the
+`--dir-template` flag. The default is
+`%collection_id/%PatientID/%StudyInstanceUID/%Modality_%SeriesInstanceUID`:
+
+```python
+# Simplified hierarchy (omit StudyInstanceUID level)
+client.download_from_selection(
+    downloadDir="./data",
+    collection_id="tcga_luad",
+    dirTemplate="%collection_id/%PatientID/%Modality"
+)
+# Results in: ./data/tcga_luad/TCGA-05-4244/CT/
+
+# dirTemplate="" disables the hierarchy, writing every file straight into downloadDir
+```
+
 Use these variables in `--dir-template` to organize downloads:
 
 - `%collection_id` - Collection identifier
