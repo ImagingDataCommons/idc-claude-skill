@@ -32,13 +32,21 @@ Every DICOM file in IDC is tagged with its license in the file metadata, and eve
 
 | License | Share of data | Commercial use | Attribution required |
 |---------|---------------|----------------|----------------------|
-| CC BY 4.0 / CC BY 3.0 | ~97% | Yes | Yes |
-| CC BY-NC 4.0 / CC BY-NC 3.0 | ~3% | **No** | Yes |
-| Custom terms (rare) | <1% | Read the terms | Yes |
+| CC BY 4.0 | 74.7% | Yes | Yes |
+| CC BY 3.0 | 22.1% | Yes | Yes |
+| CC BY-NC 4.0 | 2.1% | **No** | Yes |
+| CC BY-NC 3.0 | 0.8% | **No** | Yes |
+| NLM Terms and Conditions | 0.3% | Read the terms | Yes |
 
-Custom-licensed collections carry collection-specific conditions — for example NLM Terms and
-Conditions. Treat any `license_short_name` that is not a recognizable Creative Commons string
-as custom, and report the exact value to the user rather than assuming it permits reuse.
+About 97% of IDC data by size permits commercial reuse; just under 3% is non-commercial. Treat
+any `license_short_name` that is not a recognizable Creative Commons string as custom, and
+report the exact value to the user rather than assuming it permits reuse.
+
+**Licenses attach to individual series, not to whole collections.** 39 of IDC's 176 collections
+carry more than one license — analysis results and original images within one collection can
+differ, as can series from different sources. Never conclude that a collection is
+commercially usable from one series, or from the collection's headline license: group by
+`license_short_name` over the exact selection you intend to use.
 
 **When a cohort mixes licenses, the most restrictive term governs the combined dataset.** If a
 selection contains any CC BY-NC series, either drop those series or tell the user the whole
@@ -216,7 +224,7 @@ to acknowledge IDC itself, matching the REST response.
 ## Resources
 
 - **IDC Portal** — https://portal.imaging.datacommons.cancer.gov/
-- **IDC data licensing documentation** — https://learn.canceridc.dev/data/introduction/licensing
+- **IDC data licensing documentation** — https://learn.canceridc.dev/data/licensing
 - **`references/rest_api_guide.md`** — `/v3/licenses` and `/v3/citations` endpoint reference
 - **`references/mcp_guide.md`** — `get_licenses` and `get_citations` tool inventory
 - **`references/cloud_storage_guide.md`** — bucket separation for commercially restricted data

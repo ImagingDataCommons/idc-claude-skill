@@ -402,9 +402,9 @@ for citation in client.citations_from_selection(collection_id="rider_pilot"):
 ```
 
 About 97% of IDC data is CC BY (commercial use allowed with attribution) and about 3% is
-CC BY-NC (non-commercial only); a few collections carry custom terms. **When a cohort mixes
-licenses, the most restrictive term governs the whole thing.** Report the license alongside
-any result set you hand to a user who intends commercial use.
+CC BY-NC (non-commercial only). **Licenses attach to series, not collections** — 39 of 176
+collections carry more than one — so check the selection you actually intend to use, and note
+that the most restrictive term governs a mixed cohort.
 
 Both tasks are available from all three access paths, so stay on whichever one the session is
 already using: `idc-index` as above, `POST /v3/licenses` and `POST /v3/citations` over REST,
