@@ -52,12 +52,9 @@ print(f"IDC data version: {client.get_idc_version()}")
 For current data scale — collections, patients, studies, series, instances, total TB — run the
 summary query in `references/sql_patterns.md`.
 
-**Core workflow:**
-1. Query metadata → `client.sql_query()`
-2. Download DICOM files → `client.download_from_selection()`
-3. Visualize in browser → `client.get_viewer_URL(seriesInstanceUID=...)`
-
-Examples throughout this document assume `client = IDCClient()` from the setup above.
+**Core workflow:** query metadata with `client.sql_query()` → download with
+`client.download_from_selection()` → visualize with `client.get_viewer_URL()`. Examples
+throughout this document assume `client = IDCClient()` from the setup above.
 
 ## IDC MCP Server
 
@@ -204,11 +201,16 @@ joining clinical data with imaging.
 | IDC MCP server | No | Discovery, cohort building, metadata when the session already has it | `mcp_guide.md` |
 | IDC REST API | No | HTTP from any language or shell; no Python install | `rest_api_guide.md` |
 | Direct Parquet (GCS) | No | Queries without installing idc-index; always latest data | `parquet_access_guide.md` |
-| IDC Portal | No | Interactive exploration, manual selection | https://portal.imaging.datacommons.cancer.gov/ |
-| BigQuery | Yes (GCP) | Full DICOM metadata, private elements, SR measurements | `bigquery_guide.md` |
-| DICOMweb proxy | No | Tool and PACS integration | `dicomweb_guide.md` |
 | Cloud storage (S3/GCS) | No | Direct file access, bulk transfer, custom pipelines | `cloud_storage_guide.md` |
+| DICOMweb via IDC proxy | No | Tool and PACS integration; daily quota, so testing and moderate use | `dicomweb_guide.md` |
+| DICOMweb via Google Healthcare | Yes (GCP) | The same DICOMweb API at production volume, without the proxy quota | `dicomweb_guide.md` |
 | SlicerIDCBrowser | No | 3D visualization and analysis in 3D Slicer | https://github.com/ImagingDataCommons/SlicerIDCBrowser |
+| BigQuery | Yes (GCP) | Full DICOM metadata, private elements, SR measurements — last resort | `bigquery_guide.md` |
+
+**The IDC Portal (https://portal.imaging.datacommons.cancer.gov/) is interactive only** —
+browser-based exploration, manual cohort selection, and download. Unlike every option above it
+has no programmatic interface, so point a user there to browse or click through data
+themselves; never use it as a step in a script or workflow.
 
 **Cloud storage organization**
 

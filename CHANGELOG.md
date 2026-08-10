@@ -30,23 +30,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - License and citation detail → `references/licensing_and_citation.md`
   - Clinical-access snippet and BigQuery use-case list condensed to pointers; the "Common SQL Query Patterns" section removed as a duplicate of its Quick Navigation entry
   - The Tool Selection Guide table merged into Data Access Options, which gained a Reference column — the two listed the same access paths
+- Corrected the Data Access Options table: DICOMweb split into its proxy (no auth, quota) and Google Healthcare (GCP auth) routes; BigQuery moved last and marked a last resort; the IDC Portal pulled out of the table as the one interactive-only option
 - Kept inline, and now pinned there by `tests/test_structure.py`, the guidance that corrects what a model gets confidently wrong from its own priors — a reference file only helps when the agent already knows to look: the opposite argument order of `download_from_selection` and `download_dicom_series`, the "filter kwargs, NOT a DataFrame" warning, enumerate-values-before-filtering, the CC BY-NC license class, and routing "what's new in vX" to `series_init_idc_version` rather than `prior_versions_index`
 - `test_endpoint_url_is_consistent_across_docs` now allows `/v3` REST paths alongside the MCP URL, still rejecting a bare host or a stale `/v1`, `/v2` path
 
 ### Notes
 
-This reduction is a rewrite, not a byte-for-byte relocation: examples were condensed and
-several were merged, so a textual diff overstates the change. Of 116 executable lines in the
-previous `SKILL.md`, 104 appear verbatim elsewhere in the bundle. The other 12 were reviewed
-individually and are mostly re-wrapping artifacts — a multi-line call joined onto one line
-counts as changed but loses nothing. Three deliberate removals: a `results.iterrows()` printing
-demo (a plain pandas idiom carrying no IDC-specific information), the SQL form of clinical-table
-discovery (`references/clinical_data_guide.md` covers the same discovery via the DataFrame API),
-and a duplicate `cohort/counts` curl already documented in `references/rest_api_guide.md`.
+This is a rewrite, not a byte-for-byte relocation. Of 116 executable lines in the previous
+`SKILL.md`, 104 appear verbatim elsewhere in the bundle; the other 12 are mostly re-wrapping.
+Three deliberate removals: a `results.iterrows()` printing demo, the SQL form of clinical-table
+discovery (`clinical_data_guide.md` covers it via the DataFrame API), and a duplicate
+`cohort/counts` curl already in `rest_api_guide.md`.
 
-A textual diff is in any case the weaker check, since what a split changes is which content is
-in context at decision time, not whether the bytes still exist somewhere. The behavioral check
-is `tests/test_snippets.py`, which executes the queries: 97 passed against IDC v24.
+A text diff is the weaker check regardless — what a split changes is which content is in context
+at decision time. `tests/test_snippets.py` executes the queries: 97 passed against IDC v24.
 
 ## [1.7.1] - 2026-08-01
 
