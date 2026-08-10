@@ -18,9 +18,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - REST API entries in `SKILL.md` (Data Access Options, Quick Navigation, Tool Selection Guide, network access) and `USAGE.md` (setup section, allowed domains, guide listings)
 - `tests/test_rest_api.py`: contract tests that check the guide's endpoint list, attribute lists, and limits against the live API, skipping when it is unreachable. Added to `test-snippets.yml`
 
+- `references/licensing_and_citation.md` — license semantics (CC BY vs CC BY-NC shares, custom terms, the most-restrictive-term rule for mixed cohorts) and citation generation. Written access-path-neutral: `idc-index`, `POST /v3/licenses` / `POST /v3/citations`, and the `get_licenses` / `get_citations` MCP tools side by side, since neither task is tied to Python
+- `tests/test_structure.py` — file-only contract tests, added to `test-snippets.yml` ahead of the slower suites: a 500-line budget for `SKILL.md`, resolution of every guide it names, no orphan guides in `references/`, and assertions pinning the always-loaded content listed below. No network or `idc-index` install needed
+
 ### Changed
 
+- Reduced `SKILL.md` from 722 to under 500 lines, holding the budget in CI rather than leaving it to downstream registries to re-split after every sync. Content moved into the topical guide that already owns each subject rather than into a new catch-all file:
+  - Discovery and SQL examples (overall-scale query, per-collection breakdown, `collections_index` / `analysis_results_index` queries) → `references/sql_patterns.md`
+  - Full index-table inventory with row granularity → `references/index_tables_guide.md`, which also gained the "which table contains column X" search pattern; `SKILL.md` keeps a five-row table-family map
+  - Python `dirTemplate=` examples and the default template → `references/cli_guide.md`
+  - License and citation detail → `references/licensing_and_citation.md`
+  - Clinical-access snippet and BigQuery use-case list condensed to pointers; the "Common SQL Query Patterns" section removed as a duplicate of its Quick Navigation entry
+  - The Tool Selection Guide table merged into Data Access Options, which gained a Reference column — the two listed the same access paths
+- Corrected the Data Access Options table: DICOMweb split into its proxy (no auth, quota) and Google Healthcare (GCP auth) routes; BigQuery moved last and marked a last resort; the IDC Portal pulled out of the table as the one interactive-only option
+- Kept inline, and now pinned there by `tests/test_structure.py`, the guidance that corrects what a model gets confidently wrong from its own priors — a reference file only helps when the agent already knows to look: the opposite argument order of `download_from_selection` and `download_dicom_series`, the "filter kwargs, NOT a DataFrame" warning, enumerate-values-before-filtering, the CC BY-NC license class, and routing "what's new in vX" to `series_init_idc_version` rather than `prior_versions_index`
 - `test_endpoint_url_is_consistent_across_docs` now allows `/v3` REST paths alongside the MCP URL, still rejecting a bare host or a stale `/v1`, `/v2` path
+
+### Notes
+
+This is a rewrite, not a byte-for-byte relocation. Of 116 executable lines in the previous
+`SKILL.md`, 104 appear verbatim elsewhere in the bundle; the other 12 are mostly re-wrapping.
+Three deliberate removals: a `results.iterrows()` printing demo, the SQL form of clinical-table
+discovery (`clinical_data_guide.md` covers it via the DataFrame API), and a duplicate
+`cohort/counts` curl already in `rest_api_guide.md`.
+
+A text diff is the weaker check regardless — what a split changes is which content is in context
+at decision time. `tests/test_snippets.py` executes the queries: 97 passed against IDC v24.
 
 ## [1.7.1] - 2026-08-01
 
