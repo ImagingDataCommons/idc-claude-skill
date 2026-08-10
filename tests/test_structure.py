@@ -95,6 +95,18 @@ class TestAlwaysLoadedGuidance:
             "commercial use gets a wrong answer if this only lives in a reference file"
         )
 
+    def test_access_path_routing_gate_is_inline(self):
+        # Without this, the agent falls back to its prior that idc-index is the one entry point
+        # and pays a ~77 MB install to answer a metadata question. The gate only works if it is
+        # read before the first query, so it cannot move to a reference file.
+        skill = _read(_SKILL_MD)
+        assert "Choose the access path first" in skill, (
+            "SKILL.md must open with the access-path routing gate"
+        )
+        assert "do not install anything" in skill, (
+            "SKILL.md must tell the agent not to install idc-index for read-only metadata"
+        )
+
     def test_prior_versions_index_warning_is_inline(self):
         skill = _read(_SKILL_MD)
         assert "prior_versions_index" in skill

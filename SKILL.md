@@ -1,6 +1,6 @@
 ---
 name: imaging-data-commons
-description: Query and download public cancer imaging data from NCI Imaging Data Commons using idc-index. Invoke for any question about IDC collections, cancer imaging datasets, DICOM data access, radiology (CT, MR, PET) or pathology AI training sets, metadata queries, visualization, or license checks — even when the user doesn't explicitly mention "IDC". No authentication required.
+description: Query and download public cancer imaging data from NCI Imaging Data Commons. Invoke for any question about IDC collections, cancer imaging datasets, DICOM data access, radiology (CT, MR, PET) or pathology AI training sets, metadata queries, visualization, or license checks — even when the user doesn't explicitly mention "IDC". No authentication required.
 license: This skill is provided under the MIT License. IDC data itself has individual licensing (mostly CC-BY, some CC-NC) that must be respected when using the data.
 metadata:
     version: 1.8.0
@@ -14,32 +14,36 @@ metadata:
 
 ## Overview
 
-Use the `idc-index` Python package to query and download public cancer imaging data from the National Cancer Institute Imaging Data Commons (IDC). No authentication required for data access.
+Query and download public cancer imaging data from the National Cancer Institute Imaging Data Commons (IDC). No authentication required for data access.
 
-**Expected network access:** `idc-index` queries a local DuckDB index (no network for metadata). File downloads use public GCS (`storage.googleapis.com`) and AWS S3 (`s3.amazonaws.com`) — no authentication required. The optional IDC REST API and MCP server (`api.imaging.datacommons.cancer.gov`) also need no authentication. DICOMweb access uses either the public IDC proxy (`proxy.imaging.datacommons.cancer.gov`, no auth) or the Google Cloud Healthcare API (`healthcare.googleapis.com`, requires GCP authentication). Optional BigQuery queries (`bigquery.googleapis.com`) also require GCP authentication. No credentials or environment variables are accessed by this skill.
+**Expected network access:** IDC metadata is reachable three ways — a local DuckDB index shipped with the `idc-index` Python package (no network), or the hosted IDC service over MCP or REST (`api.imaging.datacommons.cancer.gov`, no authentication). File downloads use public GCS (`storage.googleapis.com`) and AWS S3 (`s3.amazonaws.com`) — no authentication required. DICOMweb access uses either the public IDC proxy (`proxy.imaging.datacommons.cancer.gov`, no auth) or the Google Cloud Healthcare API (`healthcare.googleapis.com`, requires GCP authentication). Optional BigQuery queries (`bigquery.googleapis.com`) also require GCP authentication. No credentials or environment variables are accessed by this skill.
 
-**Current IDC Data Version: v24** (always verify with `IDCClient().get_idc_version()`)
+**Current IDC Data Version: v24** (always verify — see *Best Practices*)
 
-**Primary tool:** `idc-index` ([GitHub](https://github.com/imagingdatacommons/idc-index)) — the
-default path, always available.
+**Choose the access path first.** There is no single default: the cheapest correct path depends
+on the session and the task.
 
-**First, check your session:** if it already has the hosted IDC MCP server, route discovery and
-metadata there and skip the setup below — see *IDC MCP Server*. Return here for downloads and
-local analysis. Otherwise continue straight through.
+1. **Session already has the IDC MCP server?** Route discovery and metadata there — see *IDC
+   MCP Server*.
+2. **Otherwise, is `idc-index` installed?** Run `python scripts/check_version.py`. If it passes,
+   use `idc-index` for everything.
+3. **Not installed, and the task is read-only metadata** — counts, attribute values, collection
+   lookups, SQL under 10 000 rows, licenses, citations, viewer URLs? **Use the REST API over
+   `curl`; do not install anything.** Installing costs ~77 MB of packaged index data plus
+   pandas, pyarrow, and duckdb, which a metadata question does not need. See *Data Access
+   Options*.
+4. **Not installed, and the task needs more than metadata** — downloading files, pandas or
+   plotting, pydicom/SimpleITK, pathology tiling, results past 10 000 rows, or a version-pinned
+   script the user re-runs? Install `idc-index`: `check_version.py` exits non-zero and prints
+   the exact `pip install` command for the running interpreter. Prefer a virtual environment,
+   then restart Python.
 
-**CRITICAL - run this FIRST**, before any IDC query that uses `idc-index`:
+`idc-index` ([GitHub](https://github.com/imagingdatacommons/idc-index)) is still the most
+capable path and the only one that moves image bytes; the rule is just not to pay for it before
+the task calls for it. `check_version.py` never installs anything itself — it also flags a newer
+`idc-index` or skill release when one exists.
 
-```bash
-python scripts/check_version.py
-```
-
-It checks the installed `idc-index` against the pinned minimum and prints a notice when a newer
-`idc-index` release (which may carry a newer IDC data version) or a newer skill version is
-available, with the link to update. It never installs or upgrades anything itself: if the
-pinned minimum is missing it exits non-zero and prints the exact `pip install` command for the
-running interpreter — run that, preferring a virtual environment, then restart Python.
-
-**Verify the IDC data version before answering anything about IDC content:**
+**Setup for the `idc-index` path:**
 
 ```python
 from idc_index import IDCClient
@@ -49,12 +53,10 @@ client = IDCClient()
 print(f"IDC data version: {client.get_idc_version()}")
 ```
 
-For current data scale — collections, patients, studies, series, instances, total TB — run the
-summary query in `references/sql_patterns.md`.
-
 **Core workflow:** query metadata with `client.sql_query()` → download with
-`client.download_from_selection()` → visualize with `client.get_viewer_URL()`. Examples
-throughout this document assume `client = IDCClient()` from the setup above.
+`client.download_from_selection()` → visualize with `client.get_viewer_URL()`. Python examples
+below assume this `client`; *Data Access Options* has the REST equivalents. For current data
+scale, run the summary query in `references/sql_patterns.md` or `GET /v3/stats`.
 
 ## IDC MCP Server
 
@@ -78,12 +80,11 @@ analysis, DICOMweb, BigQuery, digital pathology tiling, and reproducible scripts
 passing SeriesInstanceUIDs from the server to `client.download_from_selection(...)`, and run
 `scripts/check_version.py` at that point.
 
-**If it is not available**, use `idc-index` below — the default, fully capable path. Mention
-the endpoint once only if the task would clearly benefit (repeated interactive discovery, or
-no local Python), and let the user decide how to connect it. Do not change their
-configuration, and do not repeat the suggestion. The same service is also reachable without
-any MCP configuration as a REST API at `https://api.imaging.datacommons.cancer.gov/v3` — see
-*Data Access Options* and `references/rest_api_guide.md`.
+**If it is not available**, the identical service is reachable with no configuration as a REST
+API at `https://api.imaging.datacommons.cancer.gov/v3` — use it for read-only metadata rather
+than installing `idc-index`, per the routing gate in *Overview*. Suggest connecting the MCP
+server at most once, only for repeated interactive discovery, and never change the user's
+configuration yourself.
 
 See `references/mcp_guide.md` for the tool inventory, handoff patterns, and per-host notes.
 
@@ -124,9 +125,7 @@ troubleshooting.
 IDC adds two grouping levels above the standard DICOM hierarchy (Patient → Study → Series → Instance):
 
 - **collection_id**: Groups patients by disease, modality, or research focus (e.g., `tcga_luad`, `nlst`). A patient belongs to exactly one collection.
-- **analysis_result_id**: Identifies derived objects (segmentations, annotations, radiomics features) across one or more original collections.
-
-Use `collection_id` to find original imaging data, may include annotations deposited along with the images; use `analysis_result_id` to find AI-generated or expert annotations.
+- **analysis_result_id**: Identifies derived objects (segmentations, annotations, radiomics features) across one or more original collections. Use it to find AI-generated or expert annotations, while `collection_id` finds original imaging data (which may itself include deposited annotations).
 
 **Key identifiers for queries:**
 | Identifier | Scope | Use for |
@@ -138,14 +137,9 @@ Use `collection_id` to find original imaging data, may include annotations depos
 
 ## Index Tables
 
-The `idc-index` package provides multiple metadata index tables, accessible via SQL or as pandas DataFrames.
+The `idc-index` package provides multiple metadata index tables, accessible via SQL or as pandas DataFrames. The REST API exposes the same tables through `GET /tables` and `POST /sql`.
 
-**Complete index table documentation:** Use https://idc-index.readthedocs.io/en/latest/indices_reference.html for quick check of available tables and columns without executing any code.
-
-**Important:** Use `client.indices_overview` to get current table descriptions and column schemas. This is the authoritative source for available columns and their types — always query it when writing SQL or exploring data structure.
-
-`client.indices_overview` also answers "which table contains column X" — see
-`references/index_tables_guide.md` for that search pattern and full schema discovery.
+**Important:** `client.indices_overview` is the authoritative source for current table descriptions, available columns, and their types — query it when writing SQL or exploring data structure. It also answers "which table contains column X"; see `references/index_tables_guide.md` for that search pattern and full schema discovery.
 
 ### Available Tables
 
@@ -197,10 +191,10 @@ joining clinical data with imaging.
 
 | Method | Auth | Best For | Reference |
 |--------|------|----------|-----------|
-| `idc-index` | No | Queries and downloads — the default | This document |
+| `idc-index` | No | Downloads, pandas analysis, unbounded queries — the most capable path | This document |
 | IDC MCP server | No | Discovery, cohort building, metadata when the session already has it | `mcp_guide.md` |
-| IDC REST API | No | HTTP from any language or shell; no Python install | `rest_api_guide.md` |
-| Direct Parquet (GCS) | No | Queries without installing idc-index; always latest data | `parquet_access_guide.md` |
+| IDC REST API | No | Metadata with no install, from any language or shell — the default when `idc-index` is absent | `rest_api_guide.md` |
+| Direct Parquet (GCS) | No | Version-pinned queries, or results past the REST row cap | `parquet_access_guide.md` |
 | Cloud storage (S3/GCS) | No | Direct file access, bulk transfer, custom pipelines | `cloud_storage_guide.md` |
 | DICOMweb via IDC proxy | No | Tool and PACS integration; daily quota, so testing and moderate use | `dicomweb_guide.md` |
 | DICOMweb via Google Healthcare | Yes (GCP) | The same DICOMweb API at production volume, without the proxy quota | `dicomweb_guide.md` |
@@ -212,59 +206,71 @@ browser-based exploration, manual cohort selection, and download. Unlike every o
 has no programmatic interface, so point a user there to browse or click through data
 themselves; never use it as a step in a script or workflow.
 
+**REST API — the no-install metadata path**
+
+`https://api.imaging.datacommons.cancer.gov/v3`, no authentication: discovery, cohort counts and
+manifests, read-only SQL, clinical tables, viewer URLs, licenses, citations. It is the same
+service as the MCP server over plain HTTP, so it needs no configuration. It never moves image
+bytes — switch to `idc-index` to download, to get a DataFrame, or for results past 10 000 rows.
+
+```bash
+B=https://api.imaging.datacommons.cancer.gov/v3
+curl -s $B/version   # idc_version, idc_index_data_version, api_version
+curl -s $B/stats     # collections, patients, studies, series, instances, size_TB
+curl -s "$B/attributes/Modality/values?limit=5"   # real filter values, with counts
+curl -s $B/sql -H 'content-type: application/json' \
+  -d '{"sql":"SELECT collection_id, COUNT(*) n FROM index GROUP BY 1 ORDER BY n DESC LIMIT 3"}'
+curl -s $B/cohort/counts -H 'content-type: application/json' \
+  -d '{"filters":{"terms":{"collection_id":["rider_pilot"]}}}'
+```
+
+**The filter object always goes under `filters`** — on `cohort/counts`, `cohort/manifest`,
+`cohort/manifest.txt`, `licenses`, and `citations` alike. A bare filter or an unrecognized key is
+a 422 naming the fix; an unfiltered series-enumerating request is a 400, not the whole archive.
+Every filtered response echoes `filters_applied` and `warnings` — read them, because they name
+any predicate the server dropped. A zero count with empty `warnings` therefore means the filter
+matched nothing, not that a value was miscased; miscasing produces a warning that says so.
+
+`POST /sql` takes one read-only `SELECT`/`WITH` over the tables `idc-index` exposes plus
+`clinical.<table>`; `max_rows` defaults to 5 000, caps at 10 000, and `truncated` flags clipping.
+`GET /attributes` lists the 19 filterable attributes — clinical values, segmented anatomy, and
+acquisition parameters are not among them and need SQL. There is no rate limit or quota. **Use
+v3 only:** V1 and V2 are superseded and scheduled for shutdown, so port any `/v1/`- or
+`Modality_btw`-style example a user brings rather than extending it.
+
+Both sides build on `idc-index-data`, so compare the API's `idc_index_data_version` against local
+`idc_index_data.__version__` before mixing them: the **major is the IDC data release** (`24.x.y`
+serves `v24`), so differing minor/patch means the series are identical. If the API is a whole
+release ahead, `idc-index` **cannot download the extra series** — it silently skips what its own
+index does not list — so either upgrade it (run `scripts/check_version.py` for the right command)
+or transfer directly from the bucket with `s5cmd --no-sign-request`.
+
+See `references/rest_api_guide.md` for the endpoint reference, filter grounding, limits, and the
+manifest-based download flow.
+
 **Cloud storage organization**
 
-All DICOM files live in public buckets mirrored between AWS S3 and GCS, organized by CRDC
-UUIDs (not DICOM UIDs) to support versioning: `idc-open-data` (>90% of data),
-`idc-open-data-two` / `idc-open-idc1` (collections with potential head scans), and
-`idc-open-data-cr` / `idc-open-cr` (~4%, commercial use restricted, CC BY-NC). Files are stored
-as `<crdc_series_uuid>/<crdc_instance_uuid>.dcm`; access is free (no egress fees) via AWS CLI,
-gsutil, or s5cmd with anonymous access. Use the `series_aws_url` column for S3 URLs; GCS uses
-the same path structure. See `references/cloud_storage_guide.md`.
+All DICOM files live in public buckets mirrored between AWS S3 and GCS, organized by CRDC UUIDs
+(not DICOM UIDs) to support versioning, as `<crdc_series_uuid>/<crdc_instance_uuid>.dcm`. Access
+is free (no egress fees) via AWS CLI, gsutil, or s5cmd with anonymous access; use the
+`series_aws_url` column for S3 URLs. Note that `idc-open-data-cr` / `idc-open-cr` (~4% of data)
+is commercial-use restricted (CC BY-NC). See `references/cloud_storage_guide.md` for the full
+bucket list and UUID mapping.
 
 **DICOMweb access**
 
-IDC data is available via DICOMweb (Google Cloud Healthcare API implementation) for PACS
-integration and DICOMweb-compatible tools: a public proxy (no auth, daily quota) for testing
-and moderate queries, or Google Healthcare (GCP auth) for production volumes. See
-`references/dicomweb_guide.md` for endpoints, supported operations, and code examples.
-
-**REST API**
-
-IDC hosts a REST API at `https://api.imaging.datacommons.cancer.gov/v3` (no authentication)
-covering discovery, cohort counts and manifests, read-only SQL, clinical tables, viewer URLs,
-licenses, and citations. It is the same service as the MCP server, over plain HTTP. Reach for
-it when there is no Python available, when the client is another language, or when the user
-wants shell commands they can re-run; use `idc-index` when the result must become a Python
-object or files must be downloaded.
-
-**Use v3 only.** The V1 and V2 APIs are superseded and scheduled for shutdown — never write
-new code against them, and port any V1/V2 examples a user brings (recognizable by a `/v1/` or
-`/v2/` path, or filter suffixes like `Modality_btw`) to v3 instead of extending them.
-
-```bash
-curl -s https://api.imaging.datacommons.cancer.gov/v3/version
-```
-
-Both sides are built on `idc-index-data` and report its version, so check them against each
-other before mixing them: the API's `idc_index_data_version` (from `/v3/version`) vs local
-`idc_index_data.__version__`. The **major is the IDC data release** (`24.x.y` serves `v24`);
-minor and patch are index builds of that same release, so if only those differ the series are
-identical. If the API is a whole release ahead, `idc-index` **cannot download the extra
-series** — it resolves every URL against its own index and silently skips what it does not
-list — so either `pip install --upgrade idc-index` or transfer directly from the bucket with
-`s5cmd --no-sign-request`.
-
-See `references/rest_api_guide.md` for the endpoint reference, filter syntax, limits, the
-version-skew download workaround, and the body-shape pitfall that makes a mis-shaped filter
-silently return all of IDC.
+IDC data is available via DICOMweb (Google Cloud Healthcare API) for PACS integration and
+DICOMweb-compatible tools: a public proxy (no auth, daily quota) for testing and moderate
+queries, or Google Healthcare (GCP auth) for production volumes. See
+`references/dicomweb_guide.md`.
 
 **Direct Parquet access**
 
-All idc-index metadata tables are published as Parquet files to a public GCS bucket
-(`idc-index-data-artifacts`) with unrestricted CORS, enabling DuckDB or pandas queries without
-installing idc-index — including cross-table joins and queries against `volume_geometry_index`
-and `rtstruct_index`. See `references/parquet_access_guide.md` for URL patterns and examples.
+The idc-index metadata tables are also published as Parquet on a public GCS bucket
+(`idc-index-data-artifacts`), queryable with DuckDB or pandas. This needs `pip install duckdb`
+and cannot reach the per-collection clinical tables, so prefer REST `/sql` for ad-hoc metadata;
+choose Parquet to pin a data version or for results past the REST row cap. See
+`references/parquet_access_guide.md`.
 
 ## Core Capabilities
 
@@ -287,7 +293,9 @@ print(modalities)
 ```
 
 The same pattern works for any filter column, optionally narrowed by another —
-`BodyPartExamined` within a `Modality`, `Manufacturer`, `collection_id`.
+`BodyPartExamined` within a `Modality`, `Manufacturer`, `collection_id`. On the REST path this
+grounding is a single call — `GET /attributes/{attr}/values` returns values with counts — and the
+cohort endpoints report a miscased value in `warnings` rather than as an empty result.
 
 Two indices carry curated collection-level metadata the primary `index` does not, both
 requiring `client.fetch_index(...)` first: `collections_index` (cancer types, tumor locations,
@@ -414,10 +422,10 @@ or the `get_licenses` and `get_citations` MCP tools. See
 `references/licensing_and_citation.md` for the full license inventory, all three routes, the
 citation formats (APA, BibTeX, CSL JSON, RDF Turtle), and what to include when publishing.
 
-### 5. Reaching past `idc-index`
+### 5. Reaching past the index
 
-**Default choice:** use `idc-index` for most tasks (no auth, easy API, batch downloads).
-*Data Access Options* above is the full routing table.
+Pick the access path with the routing gate in *Overview*; *Data Access Options* above is the
+full routing table.
 
 Before reaching for BigQuery (which needs a billing-enabled GCP account), check whether a
 specialized index table already has the column you want: search `client.indices_overview`,
@@ -429,19 +437,17 @@ idc-index equivalent.
 ## Best Practices
 
 - **Check schema before writing queries** — Use `client.get_index_schema('index')` (reads cached metadata, no SQL executed) or `client.indices_overview` to see all available columns and their descriptions. The version-tracking columns `series_init_idc_version` and `series_revised_idc_version` in the main `index` table directly answer "what's new / when was this added" questions without touching `prior_versions_index`.
-- **Never use web search for IDC data content questions** - Always query the idc-index directly using `client.sql_query()`. Web sources (release notes, blog posts, documentation pages) are frequently out of date and will produce incorrect answers. The local DuckDB index is the authoritative source; use it even when web search is available.
-- **Verify IDC version before generating responses** - Always call `client.get_idc_version()` at the start of a session to confirm you're using the expected data version (currently v24). If using an older version, recommend `pip install --upgrade idc-index`
+- **Never use web search for IDC data content questions** - Always query the IDC index directly, via `client.sql_query()` locally or `POST /v3/sql` over HTTP. Web sources (release notes, blog posts, documentation pages) are frequently out of date and will produce incorrect answers. The index is the authoritative source; use it even when web search is available.
+- **Verify the IDC data version at the start of a session** - `client.get_idc_version()`, `GET /v3/version`, or the MCP `get_idc_version` tool, depending on the path in use (currently v24). For a stale local index, run `scripts/check_version.py` and use the upgrade command it prints
 - **Check licenses and generate citations** - Query `license_short_name` and respect CC BY vs CC BY-NC terms; use `citations_from_selection()` to produce citations from `source_DOI` for publications
-- **Start with small queries** - Use `LIMIT` clause when exploring to avoid long downloads and understand data structure
-- **Organize downloads with dirTemplate** - Use meaningful directory structures like `%collection_id/%PatientID/%Modality`
-- **Estimate size first** - Check collection size before downloading - some collection sizes are in terabytes!
-- **Save manifests** - Always save query results with Series UIDs for reproducibility and data provenance
+- **Explore small, then commit** - Use `LIMIT` (or a low `max_rows`) while exploring, and check collection size before downloading — some collections are terabytes. See `references/cli_guide.md`
+- **Keep downloads reproducible** - Organize with `dirTemplate` (e.g. `%collection_id/%PatientID/%Modality`) and save the Series UIDs or manifest behind any dataset you build
 
 ## Troubleshooting
 
 **Issue: `ModuleNotFoundError: No module named 'idc_index'`**
 - **Cause:** idc-index package not installed
-- **Solution:** Install with `pip install --upgrade idc-index`; for data analysis also install `pip install pandas numpy pydicom` (tested with pandas>=1.5, numpy>=1.23, pydicom>=2.3)
+- **Solution:** If the task is read-only metadata, do not install it — use the REST API instead (*Data Access Options*). Otherwise run `scripts/check_version.py` and use the install command it prints, which targets the running interpreter and pins the vetted version. For data analysis also add pandas, numpy, and pydicom (tested with pandas>=1.5, numpy>=1.23, pydicom>=2.3)
 
 **Issue: Download fails with connection timeout**
 - **Cause:** Network instability or large download size
@@ -459,14 +465,8 @@ idc-index equivalent.
 
 **Issue: Column not found in `index` table (e.g., `SliceThickness`, `PixelSpacing`, `KVP`, `EchoTime`, `InjectedDose`)**
 - **Cause:** The `index` table contains series-level metadata only; modality-specific acquisition and reconstruction parameters live in dedicated tables (`ct_index`, `mr_index`, `pt_index`)
-- **Solution:** Search `client.indices_overview` to find the right table, then fetch and join on `SeriesInstanceUID`:
+- **Solution:** Search `client.indices_overview` for the column to find its table — the loop is under *Finding which table contains a column* in `references/index_tables_guide.md` — then fetch and join on `SeriesInstanceUID`:
   ```python
-  target = "SliceThickness"
-  for table_name, info in client.indices_overview.items():
-      if any(c["name"] == target for c in info["schema"]["columns"]):
-          print(f"Found in: {table_name}")
-  # → Found in: ct_index
-
   client.fetch_index("ct_index")
   result = client.sql_query("""
       SELECT i.SeriesInstanceUID, i.Modality, c.SliceThickness, c.KVP, c.PixelSpacing_row_mm

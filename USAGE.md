@@ -32,7 +32,7 @@ This gives Claude the complete skill with all the reference guides in one upload
      * `*.github.com` and `*.githubusercontent.com`: used to access source code and release artifacts
      * `*.googleapis.com`: used to fetch IDC data from Google Storage buckets
      * `*.s3.amazonaws.com`: used to fetch IDC data from Amazon S3 buckets
-     * `api.imaging.datacommons.cancer.gov`: used for the IDC REST API and MCP server (optional — only if you want the skill to query IDC over HTTP)
+     * `api.imaging.datacommons.cancer.gov`: the IDC REST API and MCP server — recommended, since it lets the skill answer metadata questions over HTTP without installing anything
 
 <img width="899" height="648" alt="image" src="https://github.com/user-attachments/assets/5bcb2d6f-9b9b-4c9e-955f-839cb4a98ca3" />
 
@@ -152,9 +152,10 @@ produces `mcp__claude_ai_<name>__*`. Allow rules require a literal server segmen
 ## IDC REST API (No Setup Required)
 
 The same service is also a plain REST API at `https://api.imaging.datacommons.cancer.gov/v3`,
-with no authentication and nothing to register. The skill uses it when an assistant has no
-local Python, when the client is another language, or when the user wants shell commands they
-can re-run:
+with no authentication and nothing to register. The skill prefers it for read-only metadata
+whenever `idc-index` is not already installed — answering a counts or attribute question does not
+justify a ~77 MB package install — and also uses it when the client is another language or the
+user wants shell commands they can re-run:
 
 ```bash
 curl -s https://api.imaging.datacommons.cancer.gov/v3/version

@@ -1,6 +1,6 @@
 # IDC REST API Guide
 
-**Tested with:** API `3.0.0b2` (build `968e137`), IDC data version v24, `idc_index_data_version` 24.2.2
+**Tested with:** API `3.0.0b3` (build `0640860`), IDC data version v24, `idc_index_data_version` 24.2.2
 
 IDC operates a hosted REST API that exposes discovery, cohort building, metadata SQL, and
 download manifests over plain HTTP. No authentication, account, or credentials are required —
@@ -29,14 +29,17 @@ storage to the client.
 | Situation | Use |
 |-----------|-----|
 | Session already has the hosted MCP server | MCP tools (`mcp_guide.md`) — same data, no HTTP plumbing |
-| Local Python, results feed pandas / downloads | `idc-index` (`SKILL.md`) |
+| `idc-index` already installed, results feed pandas / downloads | `idc-index` (`SKILL.md`) |
+| `idc-index` **not** installed and the task is read-only metadata | This REST API — do not install to answer a metadata question |
 | No Python, or a non-Python client, or shell commands the user re-runs | This REST API |
 | Installed `idc-index` is a whole IDC data release behind and cannot be upgraded here | REST API for the query, **direct bucket transfer** may be needed for the download — `idc-index` cannot fetch what its index does not list |
 
 Being hosted, the API always serves a current IDC release — but so does an up-to-date
 `idc-index`. "I want the newest data" is not on its own a reason to prefer the API: the normal
-fix for a stale local index is `pip install --upgrade idc-index`. Reach for the API on version
-grounds only when upgrading is not an option in that environment.
+fix for a stale local index is to upgrade it. Reach for the API on version grounds only when
+upgrading is not an option in that environment. Avoiding the install *is* a reason, though: the
+packaged index data is ~77 MB before pandas, pyarrow, and duckdb, which a metadata question does
+not need.
 
 ## Endpoint and Versioning
 
@@ -54,7 +57,7 @@ running build rather than assuming the values in this guide:
 
 ```bash
 curl -s https://api.imaging.datacommons.cancer.gov/v3/version
-# {"idc_version":"v24","idc_index_data_version":"24.2.2","api_version":"3.0.0b2","build":"968e137"}
+# {"idc_version":"v24","idc_index_data_version":"24.2.2","api_version":"3.0.0b3","build":"0640860"}
 ```
 
 `idc_version` is the IDC data release the API serves and is the authority when the API is in
@@ -179,7 +182,8 @@ All paths are relative to `https://api.imaging.datacommons.cancer.gov/v3`.
 ## Filter Syntax
 
 Cohort filters are shared by `cohort/counts`, `cohort/manifest`, `cohort/manifest.txt`,
-`licenses`, and `citations`. They have two parts:
+`licenses`, and `citations`. **The filter object always goes under a `filters` key**, on every one
+of them. It has two parts:
 
 - **`terms`** — `{attribute: [values]}` for equality/membership. Values are **OR**'d within an
   attribute and **AND**'d across attributes.
@@ -188,12 +192,14 @@ Cohort filters are shared by `cohort/counts`, `cohort/manifest`, `cohort/manifes
 
 ```json
 {
-  "terms": {"Modality": ["CT"], "collection_id": ["nlst"]},
-  "ranges": {"instanceCount": {"gte": 100, "lte": 200}}
+  "filters": {
+    "terms": {"Modality": ["CT"], "collection_id": ["nlst"]},
+    "ranges": {"instanceCount": {"gte": 100, "lte": 200}}
+  }
 }
 ```
 
-Filters operate only on the `index` table's filterable attributes — 19 of them as of `3.0.0b2`:
+Filters operate only on the `index` table's filterable attributes — 19 of them as of `3.0.0b3`:
 
 | Kind | Attributes |
 |------|------------|
@@ -208,37 +214,40 @@ Anything outside this list — clinical values, segmented anatomy, per-modality 
 parameters — is not filterable here; use the SQL surface instead.
 
 **Ground values before filtering.** Call `GET /attributes` for what is filterable and whether
-it is a term or a range, then `GET /attributes/{attr}/values` for real values and their
-casing. Do not guess: an unknown *attribute* is a 400, but a misspelled *value* is not —
-`{"Modality": ["mr"]}` returns all-zero counts with HTTP 200, which reads like "no such data"
-rather than "wrong casing".
+it is a term or a range, then `GET /attributes/{attr}/values` for real values and their casing —
+values are matched case-sensitively.
 
-### An empty filter is not an error — check the body shape
+### The server reports what it filtered on
 
-Filter endpoints ignore unrecognized top-level keys and treat a missing filter as *no filter*,
-so a mis-shaped body silently selects **all of IDC** with HTTP 200:
+Every filtered response echoes `filters_applied` and `warnings`, and misuse is refused rather
+than ignored. Together these make a result self-describing, so you do not have to sanity-check a
+count against a number you happen to remember.
+
+| Mistake | Response |
+|---------|----------|
+| Bare filter object, no `filters` key | `422` naming the correct shape |
+| Unrecognized key at any depth (`term` for `terms`, a range bound spelled `min`) | `422` pointing at the key |
+| Unknown filter attribute, or a range attribute used as a term | `400` naming the discovery call |
+| Unfiltered `cohort/manifest` or `manifest.txt` | `400` — it will not enumerate the whole archive |
+| Unfiltered `cohort/counts` or `licenses` | `200` plus an explicit "ENTIRE IDC archive" warning |
+| A predicate that constrains nothing (`{"collection_id": []}`, `{"instanceCount": {}}`) | `200`, and `warnings` names the ignored predicate |
+| Miscased value (`mr` for `MR`) | `200`, zero counts, and a warning naming the casing that exists |
 
 ```bash
-# WRONG — `filters` is not a field of the counts body, so it is ignored
 curl -s $B/cohort/counts -H 'content-type: application/json' \
   -d '{"filters": {"terms": {"collection_id": ["rider_pilot"]}}}'
-# {"patients":85362,"studies":166740,"series":1032911,...,"size_TB":99.267}   ← all of IDC
-
-# RIGHT — counts takes the filter object directly
-curl -s $B/cohort/counts -H 'content-type: application/json' \
-  -d '{"terms": {"collection_id": ["rider_pilot"]}}'
-# {"patients":8,"studies":154,"series":774,"instances":21111,"size_TB":0.011}
+# {"patients":8,"studies":154,"series":774,"instances":21111,"size_TB":0.011,
+#  "filters_applied":{"terms":{"collection_id":["rider_pilot"]},"ranges":{}},"warnings":[]}
 ```
 
-The same mistake in reverse — sending a bare filter object to `manifest`, `manifest.txt`, or
-`citations`, which expect it under `filters` — likewise returns the unfiltered result. Sanity-
-check every filtered response against a count you expect: a `size_TB` near 99 or a `series`
-count near 1,032,911 means the filter was dropped, not that the cohort is huge.
+**Read `warnings` before reporting any count.** A zero count with `warnings: []` means the filter
+applied and matched nothing — that is a real answer. A zero count *with* a casing warning means
+the filter was wrong. And `filters_applied` covers the case no shape check can: a request
+carrying one good predicate plus one that constrains nothing returns a perfectly plausible
+number, and only `warnings` reveals the dropped half.
 
-| Body shape | Endpoints |
-|------------|-----------|
-| Filter object directly: `{"terms": …, "ranges": …}` | `cohort/counts`, `licenses` |
-| Filter wrapped: `{"filters": {…}, …}` | `cohort/manifest`, `cohort/manifest.txt`, `citations` |
+`cohort/manifest.txt` returns `text/plain` and so cannot carry these fields; there the
+required-predicate `400` does the same job, appending the ignored-predicate reason to its message.
 
 ## Worked Examples
 
@@ -263,14 +272,12 @@ Check size first — `counts` is cheap and answers "is this download sane?":
 ```bash
 curl -s $B/cohort/counts \
   -H 'content-type: application/json' \
-  -d '{"terms": {"Modality": ["MR"], "BodyPartExamined": ["BREAST"]}}'
-# {"patients":3718,"studies":5689,"series":47986,"instances":6493262,"size_TB":2.421}
+  -d '{"filters": {"terms": {"Modality": ["MR"], "BodyPartExamined": ["BREAST"]}}}'
+# {"patients":3718,"studies":5689,"series":47986,"instances":6493262,"size_TB":2.421,
+#  "filters_applied":{...},"warnings":[]}
 ```
 
-Then request a page of series plus the download payload. Note the shape difference: `counts`
-and `licenses` take the filter object **directly**, while `manifest`, `manifest.txt`, and
-`citations` **wrap** it in a `filters` key. Getting this wrong does not raise an error — see
-*An empty filter is not an error* above.
+Then request a page of series plus the download payload — same filter, same `filters` key.
 
 ```bash
 curl -s $B/cohort/manifest \
@@ -299,7 +306,7 @@ curl -s "$B/viewer-url?study_instance_uid=1.3.6.1.4.1.14519.5.2.1.7695.4164.1299
 
 curl -s $B/licenses \
   -H 'content-type: application/json' \
-  -d '{"terms": {"collection_id": ["rider_pilot"]}}'
+  -d '{"filters": {"terms": {"collection_id": ["rider_pilot"]}}}'
 
 curl -s $B/citations \
   -H 'content-type: application/json' \
@@ -338,9 +345,11 @@ print(get("/version")["idc_version"])
 modalities = {v["value"] for v in get("/attributes/Modality/values", limit=1000)["values"]}
 assert "MR" in modalities
 
-# 3. Size the cohort, then page through it
+# 3. Size the cohort, then page through it — the filter always goes under `filters`
 filters = {"terms": {"collection_id": ["rider_pilot"], "Modality": ["CT"]}}
-print(post("/cohort/counts", filters))
+counts = post("/cohort/counts", {"filters": filters})
+assert not counts["warnings"], counts["warnings"]   # nothing was silently dropped
+print(counts)
 
 manifest = post("/cohort/manifest", {"filters": filters, "page": 0, "page_size": 100})
 uids = [row["SeriesInstanceUID"] for row in manifest["series"]]
@@ -357,7 +366,7 @@ reason before retrying.
 Ground the schema with `GET /tables` and `GET /tables/{table}` — do not guess table or column
 names.
 
-**Guardrails** (verified against `3.0.0b2`):
+**Guardrails** (verified against `3.0.0b3`):
 
 - Only single read-only `SELECT` / `WITH … SELECT` statements are accepted. Anything else is
   rejected with `{"error": {"code": "invalid_query", "message": "Only read-only SELECT (or WITH ... SELECT) statements are allowed."}}` and HTTP 400.
@@ -505,7 +514,7 @@ IDC is ~99 TB across 176 collections. Always report `series` and `size_TB` from
 
 ## Limits, Defaults, and Errors
 
-Measured against `3.0.0b2`. Values above a cap are silently clamped — the response echoes the
+Measured against `3.0.0b3`. Values above a cap are silently clamped — the response echoes the
 value actually used (`max_rows`, `page_size`), so read it back rather than assuming the request
 was honored.
 
@@ -517,30 +526,38 @@ was honored.
 | `POST /cohort/manifest` | `page_size` | 100 | 5000 |
 | `POST /cohort/manifest` | `page` | 0 | — |
 | `POST /cohort/manifest` | `include_rows` | `true` | — |
-| `POST /cohort/manifest.txt` | `limit` | unlimited | — |
+| `POST /cohort/manifest.txt` | `limit` | 100000 | — |
 | `POST /cohort/manifest.txt` | `source` | `aws` | — |
 | `POST /citations` | `citation_format` | `apa` | — |
 
-`cohort/manifest.txt` is the surface that is *not* row-capped: it returned all 774 lines for
-`rider_pilot` with no `limit` set. That is why bulk series belong there rather than in a `/sql`
-dump.
+`cohort/manifest.txt` is the surface that is not *row*-capped the way `/sql` is — it returned all
+774 lines for `rider_pilot` with no `limit` set, and enumerates up to 100 000 series. That is why
+bulk series belong there rather than in a `/sql` dump.
+
+There is **no per-caller rate limit or quota** and no `429`. What is bounded is the individual
+request: a 30 s SQL statement timeout, 4 GB query memory, and the caps above. A burst is absorbed
+by autoscaling and surfaces as slower responses or a `503` — back off and retry rather than
+treating it as permanent. For sustained heavy metadata access, query the `idc-index` Parquet files
+(`references/parquet_access_guide.md`) or BigQuery instead of driving this API hard.
 
 Size-capped responses carry a `truncated` boolean: `false` means the result is complete, `true`
 means raise the limit or aggregate/narrow instead. Explore narrow, then widen.
 
-Errors are HTTP 400 with a uniform body:
+Errors come in two shapes. Semantic problems are HTTP 400 with a uniform body:
 
 ```json
 {"error": {"code": "invalid_query", "message": "Unknown or non-term filter attribute: 'NotAnAttribute'. Use list_attributes to see valid attributes."}}
 ```
 
-The messages are actionable — an unknown attribute names the discovery call to make, and a bad
-column name carries DuckDB's candidate bindings. Read the message and fix the request rather
-than retrying it unchanged.
+Request-shape problems are HTTP 422 with FastAPI's `detail[]` array, which names the offending
+key — a bare filter object, an unrecognized key, or a misspelled range bound all land here. Both
+kinds are actionable: an unknown attribute names the discovery call to make, and a bad column name
+carries DuckDB's candidate bindings. Read the message and fix the request rather than retrying it
+unchanged.
 
-Note what does **not** produce an error: an ignored filter key, an unfilterable-but-valid JSON
-body, and a value with the wrong casing all return HTTP 200. Validation catches malformed types
-(a string where a list is expected → 422), not semantically empty or over-broad requests.
+What does **not** produce an error is a filter that is valid but empty or over-broad. Those return
+HTTP 200 with a `warnings` entry saying so — see *The server reports what it filtered on*. Read
+`warnings`; do not infer from the count alone.
 
 ## Handing Off to idc-index
 
