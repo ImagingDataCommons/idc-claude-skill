@@ -37,6 +37,10 @@ keeps the next sync a straight file copy.
   `scripts/` can use it as-is; the duplicated cases left `tests/test_snippets.py`
 - `scripts/**` to the `test-snippets.yml` path filters — a change to the bundled script did
   not trigger CI
+- `SYNC.md`, for registries that vendor the skill: take the release attachment (`SKILL.md`,
+  `references/`, `scripts/`), what upstream holds in CI and which test holds it, how to
+  renumber the frontmatter while keeping `source-skill-version`, and the steps for one sync.
+  Linked from `README.md`
 
 ## [1.8.0] - 2026-08-10
 
