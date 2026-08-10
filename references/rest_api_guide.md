@@ -105,9 +105,9 @@ Comparing `idc_version` alone cannot make this distinction in the other directio
 but says nothing about the index build.
 
 When the two disagree, say so and name both versions, then reconcile rather than mixing
-results: `pip install --upgrade idc-index` brings the local side to the newer
-`idc-index-data`, and `python scripts/check_version.py` reports whether an upgrade is
-available. Do not present API-derived and locally-derived counts side by side as if they came
+results: upgrading `idc-index` brings the local side to the newer `idc-index-data`, and
+`python scripts/check_version.py` reports whether an upgrade is available and prints the
+command for the interpreter you are running. Do not present API-derived and locally-derived counts side by side as if they came
 from one index.
 
 **A major behind also breaks downloads.** `idc-index` resolves every `s3://` URL it is given
@@ -444,7 +444,7 @@ curl -s $B/cohort/manifest.txt \
   -H 'content-type: application/json' \
   -d '{"filters": {"terms": {"collection_id": ["rider_pilot"]}}}' > idc_manifest.txt
 
-# download it (pip install idc-index)
+# download it (needs idc-index installed)
 idc download-from-manifest idc_manifest.txt --download-dir ./idc-data
 ```
 
@@ -480,7 +480,8 @@ not contain are silently dropped from the selection.
 
 **Fix it one of two ways:**
 
-1. **Upgrade** — `pip install --upgrade idc-index`, then re-run. This is the right answer
+1. **Upgrade** — upgrade `idc-index` (`python scripts/check_version.py` prints the command),
+   then re-run. This is the right answer
    whenever it is possible; it restores the hierarchy, size checks, and progress reporting.
 2. **Bypass the index** — transfer directly from the bucket. The manifest URLs are
    self-contained (`s3://<bucket>/<crdc_series_uuid>/*`), so no index is needed at all:

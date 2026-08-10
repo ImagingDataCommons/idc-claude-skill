@@ -16,9 +16,8 @@ For basic clinical data access, see the "Clinical Data Access" section in the ma
 
 ## Prerequisites
 
-```bash
-pip install --upgrade idc-index
-```
+Needs `idc-index` installed — run `python scripts/check_version.py`, which reports the installed
+version and prints the install command for the interpreter you are running.
 
 No BigQuery credentials required - clinical data is packaged with `idc-index`.
 

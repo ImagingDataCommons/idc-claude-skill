@@ -124,3 +124,54 @@ class TestFrontmatter:
         assert re.fullmatch(r"\d+\.\d+\.\d+", match.group(1)), (
             f"version {match.group(1)!r} is not MAJOR.MINOR.PATCH"
         )
+
+    def test_metadata_scalars_are_indented_two_spaces(self):
+        """Two spaces, not four — some registry validators only read that form.
+
+        A four-space `metadata` block is valid YAML, and `metadata.version` still parses
+        for anything using a YAML library. Registries that validate frontmatter with a
+        line-oriented parser instead read two-space nesting only, and report the version
+        as missing, so the bundle fails their conformance gate for a whitespace reason.
+        """
+        front = _read(_SKILL_MD).split("---", 2)[1]
+        lines = front.splitlines()
+        start = next(i for i, line in enumerate(lines) if line.startswith("metadata:"))
+        nested = []
+        for line in lines[start + 1:]:
+            if line.strip() and not line.startswith((" ", "\t")):
+                break
+            if line.strip():
+                nested.append(line)
+        assert nested, "metadata block has no entries"
+        offenders = [line for line in nested if not re.match(r"^  \S", line)]
+        assert not offenders, (
+            f"metadata entries must be indented exactly two spaces: {offenders}"
+        )
+
+
+class TestInstallCommands:
+    """No hardcoded installer commands in the loaded bundle.
+
+    A bare `pip install` targets whichever interpreter `pip` resolves to, which is not
+    necessarily the one running the code, and drops the pinned version — the failure
+    `scripts/check_version.py` exists to prevent. Naming any single installer also puts
+    the bundle at odds with environments standardized on another one, so the guides say
+    what is needed and let the caller's tooling decide how. `check_version.py` is the one
+    place that prints a command, because it can see the interpreter it is running under.
+    """
+
+    def test_no_installer_commands_in_skill_or_references(self):
+        documents = {"SKILL.md": _read(_SKILL_MD)}
+        for name in sorted(os.listdir(_REFERENCES)):
+            if name.endswith(".md"):
+                documents[f"references/{name}"] = _read(os.path.join(_REFERENCES, name))
+
+        offenders = []
+        for name, text in documents.items():
+            for number, line in enumerate(text.splitlines(), 1):
+                if re.search(r"\b(pip|uv|conda|poetry)\s+(pip\s+)?(install|add)\b", line):
+                    offenders.append(f"{name}:{number}: {line.strip()}")
+        assert not offenders, (
+            "state the package that is needed and point at scripts/check_version.py "
+            "instead of hardcoding an installer:\n" + "\n".join(offenders)
+        )

@@ -5,7 +5,8 @@ Run FIRST at the start of an IDC session:  python scripts/check_version.py
 
 - Verifies that idc-index is installed and at least MIN_VERSION. It never
   installs or upgrades anything itself: if the requirement is not met it prints
-  the exact command to run and exits non-zero, leaving the choice of Python
+  the command to run — targeting the interpreter that ran this script, via uv
+  when uv is available — and exits non-zero, leaving the choice of Python
   environment to the caller.
 - Notifies (only) when a newer idc-index (PyPI) or skill release (GitHub) is
   available. Network checks are best-effort and silently skipped offline.
@@ -13,10 +14,11 @@ Run FIRST at the start of an IDC session:  python scripts/check_version.py
 Keep MIN_VERSION and SKILL_VERSION in sync with the SKILL.md frontmatter.
 """
 import re
+import shutil
 import sys
 
 MIN_VERSION = "0.12.5"   # keep in sync with metadata.idc-index in SKILL.md
-SKILL_VERSION = "1.8.0"  # keep in sync with metadata.version in SKILL.md
+SKILL_VERSION = "1.8.1"  # keep in sync with metadata.version in SKILL.md
 REPO = "ImagingDataCommons/imaging-data-commons-skill"
 
 _LEADING_DIGITS = re.compile(r"\d+")
@@ -51,11 +53,33 @@ def fetch_json(url, *keys):
         return None
 
 
+def install_commands(spec, upgrade=False):
+    """Install commands for the interpreter running this script, preferred first.
+
+    `-m pip` is always offered: every standard interpreter ships it, and naming the
+    interpreter explicitly keeps the install out of whatever other environment a bare
+    `pip` on PATH would resolve to. `uv` is offered ahead of it when it is on PATH, with
+    `--python` for the same reason — otherwise `uv pip install` targets the active
+    virtual environment, which is not necessarily this one.
+
+    Neither form overrides the PEP 668 guard on an externally managed interpreter. Both
+    refuse there, which is the intended outcome, not a gap to work around.
+    """
+    flag = "--upgrade " if upgrade else ""
+    commands = [f"{sys.executable} -m pip install {flag}'{spec}'"]
+    if shutil.which("uv"):
+        commands.insert(0, f"uv pip install --python {sys.executable} {flag}'{spec}'")
+    return commands
+
+
 def print_install_instructions(spec):
     """Print how to install `spec` — this script never modifies the environment."""
-    print(f"\nInstall the vetted version with:\n\n    {sys.executable} -m pip install '{spec}'\n")
+    print("\nInstall the vetted version with:\n")
+    for command in install_commands(spec):
+        print(f"    {command}")
+    print()
     print("Use a virtual environment where you can; on an externally managed system Python")
-    print("(PEP 668) pip refuses to install until you use a virtual environment or `--user`.")
+    print("(PEP 668) the install is refused until you use a virtual environment or `--user`.")
     print("Re-run this script once the install finishes.")
 
 
@@ -89,7 +113,7 @@ def notify_updates(installed):
         pkg = fetch_json("https://pypi.org/pypi/idc-index/json", "info", "version")
         if pkg and parse_version(pkg) > parse_version(installed):
             print(f"ℹ️ idc-index {pkg} available — to update: "
-                  f"{sys.executable} -m pip install --upgrade idc-index")
+                  f"{install_commands('idc-index', upgrade=True)[0]}")
 
     tag = fetch_json(f"https://api.github.com/repos/{REPO}/releases/latest", "tag_name")
     if tag and parse_version(tag) > parse_version(SKILL_VERSION):
