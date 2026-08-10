@@ -42,12 +42,14 @@ anything. The trust anchor is the URL the user configured plus TLS, which is est
 the server is added, not when the skill runs. That is sufficient for routing: the check only
 has to distinguish IDC from the user's other installed servers.
 
-**Fail soft.** If identification is ambiguous, or a tool call fails, fall back to `idc-index`
-rather than reporting an error. Tool names may change as the server matures.
+**Fail soft.** If identification is ambiguous, or a tool call fails, fall back rather than
+reporting an error — to the REST API (`rest_api_guide.md`) for read-only metadata, which is the
+same service with no configuration, or to `idc-index` when it is already installed or the task
+needs downloads or local analysis. Tool names may change as the server matures.
 
 ## Tool inventory
 
-Verified against server version `3.0.0b2`. Treat this as a snapshot, not a contract — call
+Verified against server version `3.0.0b3`. Treat this as a snapshot, not a contract — call
 the server's own listing rather than assuming this list is current.
 
 | Group | Tools |
@@ -66,6 +68,13 @@ those instructions for tool sequencing (ground with `list_attributes` /
 `get_attribute_values` before filtering; check `list_tables` before writing SQL). Do not
 re-derive that workflow from `SKILL.md` — the two would drift apart on the server's next
 release.
+
+**Cohort results report their own filters.** `build_cohort` and `get_cohort_urls` require at
+least one filter predicate and fail cleanly without one, rather than returning the whole archive;
+results echo the filters actually applied along with warnings for any predicate that was dropped
+or any value whose casing did not match. Read those warnings before reporting a count — a zero
+with no warning means the filter matched nothing, which is a real answer. Same contract as the
+REST endpoints they wrap; see `rest_api_guide.md`.
 
 ## Division of labor
 

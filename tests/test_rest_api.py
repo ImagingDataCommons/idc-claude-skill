@@ -3,12 +3,13 @@ Contract tests for the hosted IDC REST API documented in references/rest_api_gui
 
 The guide documents an API that versions independently of this repository — endpoint paths,
 filterable attributes, request body shapes, and row caps are all a contract with a beta
-service (3.0.0b2) that can move without notice. These tests parse the expectations out of the
+service (3.0.0b3) that can move without notice. These tests parse the expectations out of the
 guide and check them against the live API, so drift shows up as a CI failure rather than as
 wrong instructions to an agent.
 
-A failure here means the guide needs updating, not that the skill is broken — the skill's
-default path is idc-index, which does not touch the API.
+A failure here means the guide needs updating, not that the skill is broken. The skill routes
+read-only metadata to this API when idc-index is not installed, so drift here does reach users —
+but downloads and local analysis stay on idc-index, which never touches the API.
 
 Network tests skip (not fail) when the API is unreachable, so an outage does not turn CI red.
 Tests that only read documentation files run offline.
@@ -26,12 +27,24 @@ _ROOT = os.path.join(os.path.dirname(__file__), "..")
 _SKILL_MD = os.path.join(_ROOT, "SKILL.md")
 _REST_GUIDE = os.path.join(_ROOT, "references", "rest_api_guide.md")
 
-BASE_URL = "https://api.imaging.datacommons.cancer.gov/v3"
+# The URL the skill hands to users; documentation assertions always check this one.
+DOCUMENTED_BASE_URL = "https://api.imaging.datacommons.cancer.gov/v3"
+# What the live tests probe. Override with IDC_API_BASE to verify the contract against a staging
+# deployment before it reaches production.
+BASE_URL = os.environ.get("IDC_API_BASE", DOCUMENTED_BASE_URL)
 TIMEOUT = 30
 
-# Body shapes documented in "An empty filter is not an error — check the body shape".
-FILTER_DIRECT = ("/cohort/counts", "/licenses")
-FILTER_WRAPPED = ("/cohort/manifest", "/cohort/manifest.txt", "/citations")
+# Every filtered endpoint takes the filter object under a single `filters` key. The endpoints
+# that enumerate series additionally require at least one predicate; the aggregate ones answer an
+# unfiltered filter with a warning instead.
+FILTERED_ENDPOINTS = ("/cohort/counts", "/licenses", "/cohort/manifest",
+                      "/cohort/manifest.txt", "/citations")
+REQUIRE_A_PREDICATE = ("/cohort/manifest", "/cohort/manifest.txt")
+
+
+def _filtered(path, filters, **extra):
+    """POST `path` with the documented body shape: the filter under `filters`."""
+    return _request(path, {"filters": filters, **extra})
 
 
 def _read(path):
@@ -120,7 +133,7 @@ class TestDocumentedContract:
     def test_skill_md_points_at_the_guide(self):
         skill = _read(_SKILL_MD)
         assert "references/rest_api_guide.md" in skill
-        assert BASE_URL in skill, "SKILL.md does not name the REST API base URL"
+        assert DOCUMENTED_BASE_URL in skill, "SKILL.md does not name the REST API base URL"
 
     def test_guide_documents_every_surface(self):
         paths = {path for _, path in documented_endpoints()}
@@ -148,13 +161,26 @@ class TestDocumentedContract:
             "SKILL.md must name the direct-bucket fallback; the failure it avoids is silent"
         )
 
-    def test_body_shape_split_is_documented(self):
-        # The single most costly mistake against this API: a mis-shaped filter body is not an
-        # error, it silently selects all of IDC.
+    def test_single_body_shape_is_documented(self):
+        # One shape for every filtered endpoint. Before this contract, a mis-shaped body was not
+        # an error — it silently selected all of IDC — so the uniformity is load-bearing.
         body = _read(_REST_GUIDE)
-        assert "An empty filter is not an error" in body
-        for path in FILTER_DIRECT + FILTER_WRAPPED:
+        assert "The server reports what it filtered on" in body
+        assert "always goes under a `filters` key" in body
+        for path in FILTERED_ENDPOINTS:
             assert path.lstrip("/").replace("cohort/", "") in body
+
+    def test_warnings_contract_is_inline_in_skill_md(self):
+        # An agent that never reads `warnings` can still report a count that had a predicate
+        # dropped, so this has to be in the always-loaded file, not only in the guide.
+        skill = _read(_SKILL_MD)
+        assert "always goes under `filters`" in skill, (
+            "SKILL.md must state the single filter body shape"
+        )
+        assert "filters_applied" in skill and "warnings" in skill, (
+            "SKILL.md must tell the agent to read filters_applied/warnings before "
+            "reporting a count"
+        )
 
 
 # ===========================================================================
@@ -232,26 +258,57 @@ class TestFilterableAttributes:
 
 
 class TestCohortSurface:
-    """Filter semantics and the body-shape split the guide warns about."""
+    """Filter semantics, and the reporting that makes a dropped predicate visible."""
 
-    def test_counts_take_the_filter_object_directly(self):
-        counts = _request("/cohort/counts", {"terms": {"collection_id": ["rider_pilot"]}})
+    def test_every_filtered_endpoint_takes_the_same_shape(self):
+        counts = _filtered("/cohort/counts", {"terms": {"collection_id": ["rider_pilot"]}})
         assert 0 < counts["series"] < 10000, counts
+        assert counts["filters_applied"]["terms"] == {"collection_id": ["rider_pilot"]}
+        assert counts["warnings"] == [], counts["warnings"]
 
-    def test_wrapping_the_filter_for_counts_silently_selects_all_of_idc(self):
-        # Documents the failure mode, so the warning in the guide cannot go stale unnoticed.
-        wrapped = _request("/cohort/counts", {"filters": {"terms": {"collection_id": ["rider_pilot"]}}})
-        everything = _request("/cohort/counts", {})
-        assert wrapped == everything, (
-            "the API now rejects or honors a wrapped filter on /cohort/counts; the "
-            "'An empty filter is not an error' warning in rest_api_guide.md needs revisiting"
-        )
+    def test_a_bare_filter_is_rejected_rather_than_ignored(self):
+        # This is the contract the guide rests on. Before it, the bare shape returned all of IDC
+        # at HTTP 200 on these two endpoints, which an agent cannot distinguish from a real count.
+        for path in ("/cohort/counts", "/licenses"):
+            with pytest.raises(urllib.error.HTTPError) as exc:
+                _request(path, {"terms": {"collection_id": ["rider_pilot"]}})
+            assert exc.value.code == 422, f"{path} accepted a bare filter object"
+            assert "filters" in exc.value.read().decode(), (
+                f"the {path} 422 does not name the correct shape"
+            )
 
-    def test_manifest_wraps_the_filter_and_pages(self):
-        manifest = _request(
+    def test_unrecognized_keys_are_refused(self):
+        # A misspelled range bound used to be dropped in silence.
+        with pytest.raises(urllib.error.HTTPError) as exc:
+            _filtered("/cohort/counts", {"ranges": {"instanceCount": {"min": 5}}})
+        assert exc.value.code == 422
+
+    def test_series_enumerating_endpoints_require_a_predicate(self):
+        for path in REQUIRE_A_PREDICATE:
+            with pytest.raises(urllib.error.HTTPError) as exc:
+                _filtered(path, {})
+            assert exc.value.code == 400, f"{path} enumerated an unfiltered cohort"
+
+    def test_aggregate_endpoints_warn_instead_of_answering_silently(self):
+        # "How big is IDC" is legitimate, so counts answers — but says what it did.
+        counts = _filtered("/cohort/counts", {})
+        assert counts["series"] > 1_000_000, counts
+        assert any("ENTIRE IDC" in w for w in counts["warnings"]), counts["warnings"]
+
+    def test_a_predicate_that_constrains_nothing_is_reported(self):
+        # The case no shape check catches: one good predicate plus one empty list still returns a
+        # plausible number, so `warnings` is the only signal that half the filter vanished.
+        counts = _filtered("/cohort/counts",
+                           {"terms": {"collection_id": ["rider_pilot"], "Modality": []}})
+        assert counts["series"] > 0
+        assert "Modality" not in counts["filters_applied"]["terms"]
+        assert any("Modality" in w for w in counts["warnings"]), counts["warnings"]
+
+    def test_manifest_pages(self):
+        manifest = _filtered(
             "/cohort/manifest",
-            {"filters": {"terms": {"collection_id": ["rider_pilot"], "Modality": ["CT"]}},
-             "page": 0, "page_size": 3},
+            {"terms": {"collection_id": ["rider_pilot"], "Modality": ["CT"]}},
+            page=0, page_size=3,
         )
         assert manifest["returned"] == 3
         assert manifest["total_series"] < _request("/stats")["series"], "filter was dropped"
@@ -262,9 +319,9 @@ class TestCohortSurface:
 
     def test_ranges_filter_narrows_the_cohort(self):
         terms = {"collection_id": ["rider_pilot"], "Modality": ["CT"]}
-        unranged = _request("/cohort/counts", {"terms": terms})
-        ranged = _request("/cohort/counts",
-                          {"terms": terms, "ranges": {"instanceCount": {"gte": 100}}})
+        unranged = _filtered("/cohort/counts", {"terms": terms})
+        ranged = _filtered("/cohort/counts",
+                           {"terms": terms, "ranges": {"instanceCount": {"gte": 100}}})
         assert 0 < ranged["series"] < unranged["series"]
 
     def test_manifest_txt_returns_s3_urls(self):
@@ -284,12 +341,23 @@ class TestCohortSurface:
 
     def test_unknown_attribute_is_rejected(self):
         with pytest.raises(urllib.error.HTTPError) as exc:
-            _request("/cohort/counts", {"terms": {"NotAnAttribute": ["x"]}})
+            _filtered("/cohort/counts", {"terms": {"NotAnAttribute": ["x"]}})
         assert exc.value.code == 400
         assert json.loads(exc.value.read())["error"]["code"] == "invalid_query"
 
-    def test_miscased_value_returns_zero_rather_than_an_error(self):
-        assert _request("/cohort/counts", {"terms": {"Modality": ["mr"]}})["series"] == 0
+    def test_miscased_value_returns_zero_and_says_why(self):
+        # Zero with a casing warning vs zero with none is what lets an agent tell a typo from a
+        # genuinely empty cohort. The guide tells it to rely on that distinction.
+        miscased = _filtered("/cohort/counts", {"terms": {"Modality": ["mr"]}})
+        assert miscased["series"] == 0
+        assert any("case-sensitive" in w for w in miscased["warnings"]), miscased["warnings"]
+
+        absent = _filtered("/cohort/counts", {"terms": {"collection_id": ["no_such_collection"]}})
+        assert absent["series"] == 0
+        assert absent["warnings"] == [], (
+            "a value that exists in no casing must return zero with no warning, or the "
+            "zero-plus-empty-warnings signal the guide documents is not trustworthy"
+        )
 
 
 class TestSqlSurface:
@@ -345,7 +413,7 @@ class TestAttributionSurface:
     """Licenses and citations, which the skill tells users to check before publishing."""
 
     def test_licenses_are_reported_per_cohort(self):
-        licenses = _request("/licenses", {"terms": {"collection_id": ["rider_pilot"]}})["licenses"]
+        licenses = _filtered("/licenses", {"terms": {"collection_id": ["rider_pilot"]}})["licenses"]
         assert licenses and all({"license_short_name", "series", "size_TB"} <= set(item) for item in licenses)
 
     def test_citations_include_the_idc_acknowledgment(self):

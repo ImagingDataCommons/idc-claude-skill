@@ -5,24 +5,27 @@ All notable changes to the Imaging Data Commons Skill are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [1.8.0] - 2026-08-07
+## [1.8.0] - 2026-08-10
 
 ### Added
 
-- `references/rest_api_guide.md` — IDC's hosted REST API at `https://api.imaging.datacommons.cancer.gov/v3` (no authentication): query surfaces, endpoint reference, `terms` / `ranges` filter syntax, SQL guardrails, clinical tables, manifests, licenses, citations. Verified endpoint by endpoint against API 3.0.0b2 / IDC v24
-- Warning that filter endpoints ignore unrecognized top-level keys, so a mis-shaped body silently selects **all of IDC** with HTTP 200: `counts` and `licenses` take the filter object directly, while `manifest`, `manifest.txt`, and `citations` wrap it in `filters`
-- Measured request limits: `/sql` `max_rows` 5000 default / 10000 cap, `cohort/manifest` `page_size` 100 / 5000, clinical rows 5000 / 100000, attribute values 100 / 10000; `cohort/manifest.txt` is the one uncapped surface
+- `references/rest_api_guide.md` — IDC's hosted REST API at `https://api.imaging.datacommons.cancer.gov/v3` (no authentication): query surfaces, endpoint reference, `terms` / `ranges` filter syntax, SQL guardrails, clinical tables, manifests, licenses, citations. Verified endpoint by endpoint against API 3.0.0b3 / IDC v24
+- One filter body shape on every filtered endpoint — the filter object goes under `filters`. Misuse is refused rather than ignored (`422` for a bare filter or unknown key, `400` for an unfiltered manifest), and responses echo `filters_applied` and `warnings`, so a zero count with no warnings means the filter matched nothing ([IDC-REST-MCP#44](https://github.com/ImagingDataCommons/IDC-REST-MCP/pull/44))
+- Measured request limits: `/sql` 5000 / 10000 rows and a 30 s timeout, `cohort/manifest` `page_size` 100 / 5000, `manifest.txt` 100000 series, clinical rows 5000 / 100000, attribute values 100 / 10000. No rate limit or quota
 - How to check the API against a local `idc-index` via `idc_index_data_version`, and how to read a mismatch: the major is the IDC data release (`24.x.y` serves `v24`), so a differing major means different series, while a differing minor or patch is an index build of the same release
 - Workaround for a major mismatch: `idc-index` silently skips manifest rows its own index does not list, so upgrade it or transfer directly from the bucket with `s5cmd --no-sign-request`. Also summarized in `SKILL.md`, since the failure is silent
 - "Use v3 only" guidance in `SKILL.md` and the guide: V1 and V2 are superseded and scheduled for shutdown, so V1/V2 examples should be ported rather than extended
 - REST API entries in `SKILL.md` (Data Access Options, Quick Navigation, Tool Selection Guide, network access) and `USAGE.md` (setup section, allowed domains, guide listings)
-- `tests/test_rest_api.py`: contract tests that check the guide's endpoint list, attribute lists, and limits against the live API, skipping when it is unreachable. Added to `test-snippets.yml`
+- `tests/test_rest_api.py`: contract tests for the guide's endpoints, attributes, limits, and filter contract, checked against the live API and skipping when unreachable. `IDC_API_BASE` points them at a staging deployment. Added to `test-snippets.yml`
 
 - `references/licensing_and_citation.md` — license semantics (CC BY vs CC BY-NC shares, custom terms, the most-restrictive-term rule for mixed cohorts) and citation generation. Written access-path-neutral: `idc-index`, `POST /v3/licenses` / `POST /v3/citations`, and the `get_licenses` / `get_citations` MCP tools side by side, since neither task is tied to Python
 - `tests/test_structure.py` — file-only contract tests, added to `test-snippets.yml` ahead of the slower suites: a 500-line budget for `SKILL.md`, resolution of every guide it names, no orphan guides in `references/`, and assertions pinning the always-loaded content listed below. No network or `idc-index` install needed
 
 ### Changed
 
+- Access-path selection is task-based rather than one fixed default. With no MCP server and no `idc-index` installed, read-only metadata (counts, attribute values, SQL under 10000 rows, licenses, citations, viewer URLs) goes to the REST API instead of paying a ~77 MB install; `idc-index` remains the path for downloads, pandas, pixel data, and larger results, and the only one that moves image bytes. `SKILL.md` opens with that four-branch gate, and its frontmatter description no longer names `idc-index`
+- `SKILL.md` and the troubleshooting entries defer to `scripts/check_version.py` for install and upgrade commands rather than printing a bare `pip install`, which could target a different interpreter than the one running and ignores the pinned version
+- Positioned direct Parquet access after the REST API: it still needs `pip install duckdb` and does not publish the per-collection clinical tables, so it is for version pinning and results past the REST row cap
 - Reduced `SKILL.md` from 722 to under 500 lines, holding the budget in CI rather than leaving it to downstream registries to re-split after every sync. Content moved into the topical guide that already owns each subject rather than into a new catch-all file:
   - Discovery and SQL examples (overall-scale query, per-collection breakdown, `collections_index` / `analysis_results_index` queries) → `references/sql_patterns.md`
   - Full index-table inventory with row granularity → `references/index_tables_guide.md`, which also gained the "which table contains column X" search pattern; `SKILL.md` keeps a five-row table-family map
