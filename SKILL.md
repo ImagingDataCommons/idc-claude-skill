@@ -3,11 +3,11 @@ name: imaging-data-commons
 description: Query and download public cancer imaging data from NCI Imaging Data Commons. Invoke for any question about IDC collections, cancer imaging datasets, DICOM data access, radiology (CT, MR, PET) or pathology AI training sets, metadata queries, visualization, or license checks — even when the user doesn't explicitly mention "IDC". No authentication required.
 license: This skill is provided under the MIT License. IDC data itself has individual licensing (mostly CC-BY, some CC-NC) that must be respected when using the data.
 metadata:
-    version: 1.8.0
-    skill-author: Andrey Fedorov, @fedorov
-    idc-index: "0.12.5"
-    idc-data-version: "v24"
-    repository: https://github.com/ImagingDataCommons/imaging-data-commons-skill
+  version: 1.8.1
+  skill-author: Andrey Fedorov, @fedorov
+  idc-index: "0.12.5"
+  idc-data-version: "v24"
+  repository: https://github.com/ImagingDataCommons/imaging-data-commons-skill
 ---
 
 # Imaging Data Commons
@@ -35,8 +35,8 @@ on the session and the task.
 4. **Not installed, and the task needs more than metadata** — downloading files, pandas or
    plotting, pydicom/SimpleITK, pathology tiling, results past 10 000 rows, or a version-pinned
    script the user re-runs? Install `idc-index`: `check_version.py` exits non-zero and prints
-   the exact `pip install` command for the running interpreter. Prefer a virtual environment,
-   then restart Python.
+   the exact install command for the running interpreter. Prefer a virtual environment, then
+   restart Python.
 
 `idc-index` ([GitHub](https://github.com/imagingdatacommons/idc-index)) is still the most
 capable path and the only one that moves image bytes; the rule is just not to pay for it before
@@ -267,7 +267,7 @@ queries, or Google Healthcare (GCP auth) for production volumes. See
 **Direct Parquet access**
 
 The idc-index metadata tables are also published as Parquet on a public GCS bucket
-(`idc-index-data-artifacts`), queryable with DuckDB or pandas. This needs `pip install duckdb`
+(`idc-index-data-artifacts`), queryable with DuckDB or pandas. This needs DuckDB installed
 and cannot reach the per-collection clinical tables, so prefer REST `/sql` for ad-hoc metadata;
 choose Parquet to pin a data version or for results past the REST row cap. See
 `references/parquet_access_guide.md`.

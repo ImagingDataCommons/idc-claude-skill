@@ -8,6 +8,7 @@ on:
       - 'SKILL.md'
       - 'USAGE.md'
       - 'references/**'
+      - 'scripts/**'
       - 'tests/**'
       - '.github/workflows/test-snippets.yml'
   pull_request:
@@ -15,6 +16,7 @@ on:
       - 'SKILL.md'
       - 'USAGE.md'
       - 'references/**'
+      - 'scripts/**'
       - 'tests/**'
       - '.github/workflows/test-snippets.yml'
   workflow_dispatch:
@@ -40,10 +42,11 @@ jobs:
       - name: Install test dependencies
         run: pip install -r tests/requirements-test.txt
 
-      # Pure file checks (line budget, link resolution, always-loaded content).
-      # Runs first: it is fast and catches structural regressions before the slow suites.
-      - name: Run structure contract tests
-        run: pytest tests/test_structure.py -v
+      # Pure file checks (line budget, link resolution, always-loaded content) plus the
+      # offline contract for scripts/check_version.py. Runs first: no network and no
+      # idc-index needed, so it catches structural regressions before the slow suites.
+      - name: Run structure and script contract tests
+        run: pytest tests/test_structure.py tests/test_check_version.py -v
 
       - name: Run snippet tests
         run: pytest tests/test_snippets.py -v --timeout=300

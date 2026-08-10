@@ -16,7 +16,6 @@ BigQuery snippets are covered separately in test_bq_snippets.py (uses bq CLI dry
 """
 
 import os
-import re
 import sys
 
 import duckdb
@@ -27,8 +26,6 @@ from idc_index import IDCClient
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 import check_version  # noqa: E402
-
-_SKILL_MD = os.path.join(os.path.dirname(__file__), "..", "SKILL.md")
 
 
 # ---------------------------------------------------------------------------
@@ -73,50 +70,12 @@ class TestVersionAndSetup:
     """
 
     def test_package_version_meets_minimum(self):
+        # The rest of check_version.py — parsing, install instructions, exit codes — is
+        # covered offline in test_check_version.py; this needs the package installed.
         assert (
             check_version.parse_version(idc_index.__version__)
             >= check_version.parse_version(check_version.MIN_VERSION)
         ), f"idc-index {idc_index.__version__} < pinned minimum {check_version.MIN_VERSION}"
-
-    def test_parse_version_orders_numerically(self):
-        # String comparison would (wrongly) order "0.12.0" < "0.9.0".
-        assert check_version.parse_version("0.12.0") > check_version.parse_version("0.9.0")
-        assert check_version.parse_version("v1.6.5") == (1, 6, 5)
-
-    def test_parse_version_tolerates_prereleases(self):
-        # A pre-release tag upstream must not crash the startup check.
-        assert check_version.parse_version("0.13.0rc1") == (0, 13, 0)
-        assert check_version.parse_version("v1.7.0-beta") == (1, 7, 0)
-        assert check_version.parse_version("1.7") == (1, 7, 0)
-
-    def test_fetch_json_returns_none_when_unreachable(self):
-        assert check_version.fetch_json("https://pypi.org/pypi/_no_such_pkg_/json", "info") is None
-
-    def test_check_version_never_installs(self):
-        """The script reports and instructs; it must not mutate the environment.
-
-        Auto-installing into whatever interpreter `pip` happens to resolve to can
-        silently rewrite a user's global site-packages, so installation is left to
-        the caller.
-        """
-        with open(check_version.__file__, encoding="utf-8") as fh:
-            source = fh.read()
-        for forbidden in ("subprocess", "--break-system-packages", "pip3"):
-            assert forbidden not in source, f"check_version.py must not use {forbidden}"
-
-    def test_install_instructions_target_running_interpreter(self, capsys):
-        check_version.print_install_instructions(f"idc-index=={check_version.MIN_VERSION}")
-        out = capsys.readouterr().out
-        assert f"{sys.executable} -m pip install" in out
-        assert check_version.MIN_VERSION in out
-
-    def test_script_versions_match_skill_frontmatter(self):
-        with open(_SKILL_MD, encoding="utf-8") as fh:
-            front = fh.read().split("---", 2)[1]
-        idc_index_meta = re.search(r'idc-index:\s*"?([\d.]+)"?', front).group(1)
-        version_meta = re.search(r"version:\s*([\d.]+)", front).group(1)
-        assert check_version.MIN_VERSION == idc_index_meta
-        assert check_version.SKILL_VERSION == version_meta
 
     def test_idc_data_version_is_v24(self, client):
         assert client.get_idc_version() == "v24"

@@ -6,7 +6,7 @@ All idc-index metadata tables are published as Parquet files to a public GCS buc
 
 **Limitation:** download helpers (`download_from_selection()`), viewer URLs (`get_viewer_URL()`), and citation generation require the idc-index client and are not available from raw Parquet files.
 
-**This is not the first no-install option to reach for.** It still needs `pip install duckdb`, and the per-collection clinical tables are not published here — only the `clinical_index` dictionary. For ad-hoc metadata with nothing installed, the REST API (`rest_api_guide.md`) needs no install at all and reaches `clinical.<table>` through `POST /sql`.
+**This is not the first no-install option to reach for.** It still needs DuckDB installed, and the per-collection clinical tables are not published here — only the `clinical_index` dictionary. For ad-hoc metadata with nothing installed, the REST API (`rest_api_guide.md`) needs no install at all and reaches `clinical.<table>` through `POST /sql`.
 
 ## When to Use This Guide
 
@@ -50,10 +50,8 @@ https://storage.googleapis.com/idc-index-data-artifacts/current/release_artifact
 
 ## Prerequisites
 
-```bash
-pip install duckdb
-# or: uv add duckdb
-```
+Install the Python `duckdb` package, using whatever installer manages the environment you are
+running in.
 
 DuckDB reads Parquet directly from HTTPS URLs using HTTP range requests — no GCS client library or authentication required.
 

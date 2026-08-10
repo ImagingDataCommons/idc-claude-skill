@@ -5,6 +5,39 @@ All notable changes to the Imaging Data Commons Skill are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.8.1] - 2026-08-10
+
+Conformance pass from review of the downstream sync in
+[K-Dense-AI/scientific-agent-skills#158](https://github.com/K-Dense-AI/scientific-agent-skills/pull/158):
+each item was a local edit a registry had to make to the vendored copy, so fixing it here
+keeps the next sync a straight file copy.
+
+### Fixed
+
+- `SKILL.md` frontmatter indents `metadata` two spaces, not four. Four is valid YAML, but
+  registry validators that read frontmatter line by line see only two-space nesting and
+  report `metadata.version` as missing. Pinned by `tests/test_structure.py`
+
+### Changed
+
+- No hardcoded installer commands in the bundle: `SKILL.md` and the guides name the package
+  needed and point at `scripts/check_version.py` instead of printing `pip install …`, which
+  targets whichever interpreter `pip` resolves to, drops the pinned version, and collides
+  with environments standardized on another installer. Guarded by `tests/test_structure.py`
+- `check_version.py` prefers `uv` when on `PATH`, with `--python` so it targets the
+  interpreter that failed to import `idc_index` rather than the active environment. Neither
+  form overrides PEP 668
+
+### Added
+
+- `tests/test_check_version.py`: offline, standard-library-only contract for the bundled
+  script — version parsing, install-command construction, exit codes, best-effort network
+  notices, and guards that it never shells out to an installer or bypasses PEP 668. Runs
+  with nothing installed, so a registry that requires a suite for any skill shipping
+  `scripts/` can use it as-is; the duplicated cases left `tests/test_snippets.py`
+- `scripts/**` to the `test-snippets.yml` path filters — a change to the bundled script did
+  not trigger CI
+
 ## [1.8.0] - 2026-08-10
 
 ### Added

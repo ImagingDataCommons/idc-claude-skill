@@ -20,9 +20,8 @@ For table schemas, DataFrame access, and join column references, see `references
 
 ## Prerequisites
 
-```bash
-pip install --upgrade idc-index
-```
+Needs `idc-index` installed — run `python scripts/check_version.py`, which reports the installed
+version and prints the install command for the interpreter you are running.
 
 ```python
 from idc_index import IDCClient

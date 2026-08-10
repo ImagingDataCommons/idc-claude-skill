@@ -17,9 +17,8 @@ For SQL query examples (filter discovery, finding annotations, size estimation),
 
 ## Prerequisites
 
-```bash
-pip install --upgrade idc-index
-```
+Needs `idc-index` installed — run `python scripts/check_version.py`, which reports the installed
+version and prints the install command for the interpreter you are running.
 
 ## Available Tables
 
