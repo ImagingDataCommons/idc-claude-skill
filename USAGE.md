@@ -26,8 +26,8 @@ This gives Claude the complete skill with all the reference guides in one upload
 
 1. Go to **Settings > Capabilities** in Claude.ai
 2. Under **Code execution and file creation**:
-   - Enable "Allow network egress" so that Claude can install `idc-index` package and its components
-   - Under "Domain whitelist" select "Package managers only" so that `idc-index` package can be pulled from PyPI
+   - Enable "Allow network egress" so that Claude can reach IDC and, when a task needs it, install the `idc-index` package
+   - Under "Domain whitelist" select "Package managers only" so that `idc-index` can be pulled from PyPI
 3. Under **Additional allowed domains** add the following:
      * `*.github.com` and `*.githubusercontent.com`: used to access source code and release artifacts
      * `*.googleapis.com`: used to fetch IDC data from Google Storage buckets
@@ -257,8 +257,8 @@ Assistant: [Checks license and explains usage restrictions]
 
 ### Command Execution
 
-- **Assistants with code execution** (e.g., Claude Desktop, Claude Code, other coding agents): Can execute commands directly, such as installing `idc-index` with pip
-- **Assistants without code execution**: Can only provide guidance. Users will need to manually run installation commands like `pip install idc-index`
+- **Assistants with code execution** (e.g., Claude Desktop, Claude Code, other coding agents): Can execute commands directly
+- **Assistants without code execution**: Can only provide commands for the user to run
 
 ### Data Access
 
@@ -284,7 +284,7 @@ Assistant: [Checks license and explains usage restrictions]
 
 - **Python environment**: Ensure Python 3.10+ is installed and accessible (idc-index requires Python >= 3.10)
 - **Network access**: Verify internet connectivity for pip installations
-- **Permissions**: Some systems may require `pip install --user idc-index` instead
+- **Use the command the skill prints**: `scripts/check_version.py` emits an install command that targets the interpreter actually running and pins the vetted version; a bare `pip` may resolve to a different environment. On an externally managed Python (PEP 668) you will need a virtual environment or `--user`
 
 ### BigQuery or DICOMweb Issues
 
