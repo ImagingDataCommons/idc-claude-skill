@@ -6,9 +6,15 @@ An AI agent skill for querying and downloading public cancer imaging data from t
 
 - Find imaging datasets by cancer type, imaging modality (CT, MR, PET, etc.), or anatomy
 - Check data licenses and generate proper citations
-- Generate download commands using the `idc-index` Python package
+- Generate download commands, either with the `idc-index` package or as direct transfers from the public S3/GCS buckets
 - Provide links to browser-based DICOM viewers for data preview
 - Answer questions about IDC data structure and DICOM metadata
+
+## What You Need
+
+Nothing to install by hand. IDC metadata is reachable with no authentication and no setup at all through the hosted [IDC MCP server](https://api.imaging.datacommons.cancer.gov/mcp) or the equivalent [REST API](https://api.imaging.datacommons.cancer.gov/v3/docs), and the skill picks whichever path is cheapest for the question asked.
+
+Tasks that go past metadata — downloading image files, analysis with pandas, reading pixel data, results past the REST row limits — use the [idc-index](https://github.com/ImagingDataCommons/idc-index) Python package. Installing it is the agent's job rather than a setup step you do up front: the skill works out the right command for the Python interpreter in use and runs it when a task calls for it (a coding agent will ask you to approve the command first). All your environment has to provide is Python 3.10+ and network access, and [USAGE.md](USAGE.md) covers the sandbox settings that allow both.
 
 ## Example Questions
 
@@ -25,13 +31,17 @@ If the skill provides incorrect or incomplete answers, please [open an issue](ht
 
 ## Setup Instructions
 
-See [USAGE.md](USAGE.md) for detailed instructions on loading this skill in your AI assistant environment (claude.ai, Claude Desktop, Claude Code, other agents, or via an LLM API).
+For coding agents (Claude Code, Codex, Cursor, Gemini CLI, and others), the quickest install is [Skills.sh](https://skills.sh/):
+
+```bash
+npx skills add ImagingDataCommons/imaging-data-commons-skill
+```
+
+See [USAGE.md](USAGE.md) for every other environment — claude.ai, Claude Desktop, manual installation into an agent's skills directory, the optional IDC MCP server, or loading the skill through an LLM API.
 
 ## Versioning
 
-This skill follows [Semantic Versioning](https://semver.org/).
-
-- **Requires:** [idc-index](https://github.com/ImagingDataCommons/idc-index)
+This skill follows [Semantic Versioning](https://semver.org/). Each release records the IDC data version and the `idc-index` version it was verified against in the `SKILL.md` frontmatter.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history and [Releases](https://github.com/ImagingDataCommons/imaging-data-commons-skill/releases) for downloads. For how to stay current with new releases and IDC data versions, see [Keeping the Skill Up to Date](USAGE.md#keeping-the-skill-up-to-date).
 
