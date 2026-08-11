@@ -35,6 +35,8 @@ This skill follows [Semantic Versioning](https://semver.org/).
 
 See [CHANGELOG.md](CHANGELOG.md) for version history and [Releases](https://github.com/ImagingDataCommons/imaging-data-commons-skill/releases) for downloads. For how to stay current with new releases and IDC data versions, see [Keeping the Skill Up to Date](USAGE.md#keeping-the-skill-up-to-date).
 
+If you maintain a skill registry that vendors this skill, see [SYNC.md](SYNC.md) for what the release bundle contains, what upstream holds in CI so your copy needs no local patches, and the steps for one sync.
+
 ## Credits
 
 This skill was created and is maintained by [Andrey Fedorov (@fedorov)](https://github.com/fedorov) and the [Imaging Data Commons](https://imaging.datacommons.cancer.gov/) team.

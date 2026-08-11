@@ -5,6 +5,12 @@ All notable changes to the Imaging Data Commons Skill are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `SYNC.md`: how registries should vendor the skill. Bundle unchanged
+
 ## [1.8.1] - 2026-08-10
 
 Conformance pass from review of the downstream sync in
