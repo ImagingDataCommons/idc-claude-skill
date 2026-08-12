@@ -5,7 +5,7 @@ All notable changes to the Imaging Data Commons Skill are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.8.2] - 2026-08-12
 
 ### Added
 
