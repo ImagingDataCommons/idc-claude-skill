@@ -4,10 +4,50 @@ The `idc-index` package provides command-line tools for downloading DICOM data f
 
 ## Installation
 
-Needs `idc-index` installed — run `python scripts/check_version.py`, which reports the installed
+Needs `idc-index` installed — run `scripts/check_version.py`, which reports the installed
 version and prints the install command for the interpreter you are running.
 
 After installation, the `idc` command is available in your terminal.
+
+### Running the version check
+
+Invoke the script with **the interpreter that will run `idc-index`** — it exists to inspect
+*that* environment, so `python`, `python3`, `py -3`, or an explicit virtual-environment path
+are all correct as long as it is the same one. The guides deliberately never put an interpreter
+name in front of the path, because no name is portable:
+
+| Environment | `python` | `python3` |
+|-------------|----------|-----------|
+| Bare Homebrew macOS | absent | present |
+| Windows (python.org installer) | present | absent |
+| Windows virtual environment | present | absent |
+| POSIX virtual environment | present | present |
+
+On Windows there is a worse case: `%LOCALAPPDATA%\Microsoft\WindowsApps` ships alias stubs for
+both names that open the Microsoft Store instead of running anything, so the command appears to
+resolve and still produces no check.
+
+**Confirm the outcome, not the command.** A pass prints
+
+```
+idc-index <version> meets pinned minimum (0.12.5)
+```
+
+and exits 0. Anything else — `command not found`, a permission error (the bundled script is not
+marked executable, and vendoring often drops the bit anyway), or no output at all — means the
+check did not run. That is not a pass.
+
+The distinction matters because the failure it guards against is silent. Identifier values are
+renormalised between `idc-index` releases while the reported IDC data version stays the same:
+0.12.3 and 0.12.5 both report `v24`, but the Pan-Cancer nuclei segmentations are
+`Pan-Cancer-Nuclei-Seg-DICOM` in the first and `pan_cancer_nuclei_seg_dicom` in the second. A
+query written against the wrong one returns zero rows rather than raising, which reads as "no
+such data" instead of "your index is stale". `get_idc_version()` cannot distinguish them, so
+the package version is the only signal.
+
+For that reason the `idc-index` setup snippet in `SKILL.md` repeats the check in Python, after
+importing `idc_index`. That copy cannot be skipped or fail to launch: the interpreter that
+imports the package is by definition the one that will run the queries.
 
 ## Available Commands
 

@@ -175,3 +175,42 @@ class TestInstallCommands:
             "state the package that is needed and point at scripts/check_version.py "
             "instead of hardcoding an installer:\n" + "\n".join(offenders)
         )
+
+
+class TestInterpreterCommands:
+    """No hardcoded interpreter name in front of a bundled script.
+
+    The same defect as TestInstallCommands, one level up. `python scripts/check_version.py`
+    names an interpreter that need not exist: `python` is absent on a bare Homebrew macOS
+    install, `python3` inside a Windows virtual environment, and on Windows either can
+    resolve to a Microsoft Store alias stub that opens the Store instead of running the
+    script. Every one of those failures surfaces as a shell error rather than a check
+    result, so a caller that scrolls past it proceeds on an unverified — possibly stale —
+    index, which returns zero rows instead of raising.
+
+    SKILL.md therefore names the success line to confirm rather than a command to type,
+    and the setup snippet re-checks in the interpreter that imports idc_index.
+    """
+
+    def _documents(self):
+        documents = {"SKILL.md": _read(_SKILL_MD)}
+        for name in sorted(os.listdir(_REFERENCES)):
+            if name.endswith(".md"):
+                documents[f"references/{name}"] = _read(os.path.join(_REFERENCES, name))
+        scripts = os.path.join(_ROOT, "scripts")
+        for name in sorted(os.listdir(scripts)):
+            if name.endswith(".py"):
+                documents[f"scripts/{name}"] = _read(os.path.join(scripts, name))
+        return documents
+
+    def test_no_interpreter_prefix_before_bundled_scripts(self):
+        pattern = re.compile(r"\b(?:python[\d.]*|py)\s+(?:-\S+\s+)?scripts/")
+        offenders = []
+        for name, text in self._documents().items():
+            for number, line in enumerate(text.splitlines(), 1):
+                if pattern.search(line):
+                    offenders.append(f"{name}:{number}: {line.strip()}")
+        assert not offenders, (
+            "refer to the script by path and let the caller pick the interpreter that will "
+            "run idc-index; no interpreter name is portable:\n" + "\n".join(offenders)
+        )

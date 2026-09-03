@@ -5,6 +5,33 @@ All notable changes to the Imaging Data Commons Skill are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.8.3] - 2026-09-03
+
+A stale index returns zero rows rather than an error, and `scripts/check_version.py` was
+too easy to skip. Prompted by an IDC-Tutorials review that ran against 0.12.3 and reported
+a working notebook as broken.
+
+### Fixed
+
+- Documented invocation of `scripts/check_version.py` no longer hardcodes an interpreter.
+  No name is portable — `python` and `python3` each go missing on common platforms, and
+  the failure is a non-fatal `command not found`. Pinned by `tests/test_structure.py`
+- Version pins, left at 1.8.1 by the 1.8.2 release, so every checkout reported an update
+  that was already installed. Now tracked by `tests/test_check_version.py`
+
+### Added
+
+- `SKILL.md` *Running the version check*: confirm the `meets pinned minimum` line rather
+  than assume the command ran
+- Setup snippet repeats the check in Python, where it cannot be skipped or fail to launch
+- Stale-index output states the consequence — zero rows, not an error — instead of only
+  the version gap
+
+### Changed
+
+- Access-path gate step 2 asks whether `idc-index` is "installed and current", not just
+  "installed", which an agent that already has it reads as a satisfied precondition
+
 ## [1.8.2] - 2026-08-12
 
 ### Added

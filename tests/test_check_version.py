@@ -172,6 +172,19 @@ class TestVersionsMatchFrontmatter:
         meta = re.search(r"version:\s*\"?([\d.]+)\"?", self._frontmatter()).group(1)
         assert check_version.SKILL_VERSION == meta
 
+    def test_skill_version_matches_changelog(self):
+        """The pins must also track the CHANGELOG, which the two tests above cannot see.
+
+        The 1.8.2 release bumped the CHANGELOG and neither pin. Both pins still agreed
+        with each other at 1.8.1, so CI passed while every fresh checkout printed
+        "Skill 1.8.2 available (you have 1.8.1)" — the update notice permanently, and
+        wrongly, telling users they were a release behind.
+        """
+        changelog = os.path.join(os.path.dirname(__file__), "..", "CHANGELOG.md")
+        with open(changelog, encoding="utf-8") as handle:
+            newest = re.search(r"^## \[([\d.]+)\]", handle.read(), re.M).group(1)
+        assert check_version.SKILL_VERSION == newest
+
 
 class _FakeIdcIndex:
     """Stand-in for the real package, so the check runs with nothing installed."""
