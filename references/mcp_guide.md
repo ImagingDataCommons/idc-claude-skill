@@ -130,7 +130,7 @@ client.download_from_selection(
 )
 ```
 
-Run `python scripts/check_version.py` before the first `idc-index` call in a session, even if
+Run `scripts/check_version.py` before the first `idc-index` call in a session, even if
 discovery happened server-side — the two components version independently.
 
 `get_cohort_urls` also returns ready-made `idc` CLI commands. Those are the better handoff

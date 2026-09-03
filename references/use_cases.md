@@ -16,7 +16,7 @@ For core API patterns (query, download, visualize, citations), see the "Core Cap
 
 ## Prerequisites
 
-Needs `idc-index` installed — run `python scripts/check_version.py`, which reports the installed
+Needs `idc-index` installed — run `scripts/check_version.py`, which reports the installed
 version and prints the install command for the interpreter you are running.
 
 ## Use Case 1: Find and Download Lung CT Scans for Deep Learning

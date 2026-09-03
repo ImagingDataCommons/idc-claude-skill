@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Check the idc-index package and this skill for required/available updates.
 
-Run FIRST at the start of an IDC session:  python scripts/check_version.py
+Run FIRST at the start of an IDC session, with the interpreter that will run
+idc-index -- the point is to inspect that environment. No interpreter name is
+portable enough to hardcode in the docs (`python` is missing on a bare Homebrew
+macOS install, `python3` inside a Windows venv), so SKILL.md tells the caller to
+confirm the "meets pinned minimum" line rather than to type a fixed command.
 
 - Verifies that idc-index is installed and at least MIN_VERSION. It never
   installs or upgrades anything itself: if the requirement is not met it prints
@@ -18,7 +22,7 @@ import shutil
 import sys
 
 MIN_VERSION = "0.12.5"   # keep in sync with metadata.idc-index in SKILL.md
-SKILL_VERSION = "1.8.1"  # keep in sync with metadata.version in SKILL.md
+SKILL_VERSION = "1.8.3"  # keep in sync with metadata.version in SKILL.md
 REPO = "ImagingDataCommons/imaging-data-commons-skill"
 
 _LEADING_DIGITS = re.compile(r"\d+")
@@ -100,6 +104,10 @@ def check_minimum():
     installed = idc_index.__version__
     if parse_version(installed) < parse_version(MIN_VERSION):
         print(f"idc-index {installed} is below the pinned minimum {MIN_VERSION}.")
+        print("Identifier values change between releases even when the reported IDC data")
+        print("version does not, so a stale index returns zero rows instead of an error:")
+        print("the Pan-Cancer nuclei segmentations are 'Pan-Cancer-Nuclei-Seg-DICOM' in")
+        print("0.12.3 and 'pan_cancer_nuclei_seg_dicom' in 0.12.5, and both report v24.")
         print_install_instructions(f"idc-index=={MIN_VERSION}")
         return None
 

@@ -3,7 +3,7 @@ name: imaging-data-commons
 description: Query and download public cancer imaging data from NCI Imaging Data Commons. Invoke for any question about IDC collections, cancer imaging datasets, DICOM data access, radiology (CT, MR, PET) or pathology AI training sets, metadata queries, visualization, or license checks — even when the user doesn't explicitly mention "IDC". No authentication required.
 license: This skill is provided under the MIT License. IDC data itself has individual licensing (mostly CC-BY, some CC-NC) that must be respected when using the data.
 metadata:
-  version: 1.8.1
+  version: 1.8.3
   skill-author: Andrey Fedorov, @fedorov
   idc-index: "0.12.5"
   idc-data-version: "v24"
@@ -25,8 +25,9 @@ on the session and the task.
 
 1. **Session already has the IDC MCP server?** Route discovery and metadata there — see *IDC
    MCP Server*.
-2. **Otherwise, is `idc-index` installed?** Run `python scripts/check_version.py`. If it passes,
-   use `idc-index` for everything.
+2. **Otherwise, is `idc-index` installed and current?** Run `scripts/check_version.py`; confirm
+   it prints `meets pinned minimum` — a `command not found` is not a pass, see
+   `references/cli_guide.md`. If it passes, use `idc-index` for everything.
 3. **Not installed, and the task is read-only metadata** — counts, attribute values, collection
    lookups, SQL under 10 000 rows, licenses, citations, viewer URLs? **Use the REST API over
    `curl`; do not install anything.** Installing costs ~77 MB of packaged index data plus
@@ -38,19 +39,23 @@ on the session and the task.
    the exact install command for the running interpreter. Prefer a virtual environment, then
    restart Python.
 
-`idc-index` ([GitHub](https://github.com/imagingdatacommons/idc-index)) is still the most
-capable path and the only one that moves image bytes; the rule is just not to pay for it before
-the task calls for it. `check_version.py` never installs anything itself — it also flags a newer
+`idc-index` ([GitHub](https://github.com/imagingdatacommons/idc-index)) is still the most capable
+path and the only one that moves image bytes; the rule is just not to pay for it before the task
+calls for it. `check_version.py` never installs anything itself — it also flags a newer
 `idc-index` or skill release when one exists.
 
 **Setup for the `idc-index` path:**
 
 ```python
+import re, idc_index
 from idc_index import IDCClient
-client = IDCClient()
+# Repeat the startup check where it cannot be skipped — see references/cli_guide.md.
+if [int(re.sub(r"\D.*", "", p) or 0) for p in idc_index.__version__.split(".")[:3]] < [0, 12, 5]:
+    raise RuntimeError(f"idc-index {idc_index.__version__} is stale (need 0.12.5): a stale "
+                       "index returns zero rows, not an error. Run scripts/check_version.py.")
 
-# Verify IDC data version (should be "v24")
-print(f"IDC data version: {client.get_idc_version()}")
+client = IDCClient()
+print(f"IDC data version: {client.get_idc_version()}")  # should be "v24"
 ```
 
 **Core workflow:** query metadata with `client.sql_query()` → download with

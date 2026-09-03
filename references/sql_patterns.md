@@ -20,7 +20,7 @@ For table schemas, DataFrame access, and join column references, see `references
 
 ## Prerequisites
 
-Needs `idc-index` installed — run `python scripts/check_version.py`, which reports the installed
+Needs `idc-index` installed — run `scripts/check_version.py`, which reports the installed
 version and prints the install command for the interpreter you are running.
 
 ```python

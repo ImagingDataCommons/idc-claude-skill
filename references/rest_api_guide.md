@@ -106,7 +106,7 @@ but says nothing about the index build.
 
 When the two disagree, say so and name both versions, then reconcile rather than mixing
 results: upgrading `idc-index` brings the local side to the newer `idc-index-data`, and
-`python scripts/check_version.py` reports whether an upgrade is available and prints the
+`scripts/check_version.py` reports whether an upgrade is available and prints the
 command for the interpreter you are running. Do not present API-derived and locally-derived counts side by side as if they came
 from one index.
 
@@ -480,7 +480,7 @@ not contain are silently dropped from the selection.
 
 **Fix it one of two ways:**
 
-1. **Upgrade** — upgrade `idc-index` (`python scripts/check_version.py` prints the command),
+1. **Upgrade** — upgrade `idc-index` (`scripts/check_version.py` prints the command),
    then re-run. This is the right answer
    whenever it is possible; it restores the hierarchy, size checks, and progress reporting.
 2. **Bypass the index** — transfer directly from the bucket. The manifest URLs are
@@ -578,7 +578,7 @@ client.download_from_selection(
 )
 ```
 
-Run `python scripts/check_version.py` before the first `idc-index` call in a session, even when
+Run `scripts/check_version.py` before the first `idc-index` call in a session, even when
 discovery happened over the API — the two version independently. Compare
 `idc_index_data_version` on both sides first (see *Checking the API against a local
 idc-index*).
